@@ -30,10 +30,10 @@ namespace Tests
 			Console.Read();
 		}
 
-        public static void Test(int offset)
-        {
+		public static void Test(int offset)
+		{
 
-        }
+		}
 
 		public static unsafe void Start(ILOGGER log)
 		{
@@ -52,14 +52,14 @@ namespace Tests
 			};
 			LayoutInfo.Add<Point>(defReaders);
 			LayoutInfo.Add<Inner>(defReaders);
-            LayoutInfo.Add<MyStruct>(defReaders);
+			LayoutInfo.Add<MyStruct>(defReaders);
 
-            LayoutInfo.Add<X>(defReaders);
+			LayoutInfo.Add<X>(defReaders);
 
 			var src = new X
 			{
 				serverId = 888,
-				a = 123,
+				a = 123.456f,
 				str = "hello world",
 				value = 789,
 				//pts = new[] { new Point { x = 1990, y = 2 }, new Point { x = 3, y = 4 }, new Point { x = 5, y = 6 } }
@@ -83,8 +83,8 @@ namespace Tests
 					w.Write(src.value);
 					w.Write(true);
 					w.Write(123.0);
-                    // w.Write(DateTime.Now.Ticks);
-                    src.pts = Enumerable.Range(0, 3).Select(i => new Point { x = i * 2, y = i * 2 + 1 }).ToArray();
+					// w.Write(DateTime.Now.Ticks);
+					src.pts = Enumerable.Range(0, 3).Select(i => new Point { x = i * 2, y = i * 2 + 1 }).ToArray();
 					w.Write((byte)src.pts.Length);
 					for (var i = 0; i < src.pts.Length; i++)
 					{
@@ -93,8 +93,8 @@ namespace Tests
 						w.Write(pt.y);
 					}
 
-                    //inner struct...
-                    w.Write(999);
+					//inner struct...
+					w.Write(999);
 					var str2 = "inner Name!";
 					for (var i = 0; i < str2.Length; i++)
 						w.Write(str2[i]);
@@ -111,7 +111,7 @@ namespace Tests
 						var result = (X)MessageReader(fastBuf, typeof(X));
 						// GC.Collect();
 						log.WriteLine(result.ToString());
-                        Thread.Sleep(1000);
+						Thread.Sleep(1000);
 
 
 						unsafe
@@ -133,7 +133,7 @@ namespace Tests
 							var fvalue = t.GetField("value");
 							var fpt2 = t.GetField("pt2");
 
-							var N = 1000 * 1000;
+							var N = 1 * 1;
 
 							//GC.RegisterForFullGCNotification(10, 10);
 							/*new Thread(s => {
@@ -154,8 +154,8 @@ namespace Tests
 								var x = (X)Activator.CreateInstance(typeof(X));
 
 								x.a = i;
-								x.f64 = 123.0;
-                                x.inner = new MyStruct { A = 5, inner = new Inner() { name = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' }) }, strr = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' }) };
+								x.f64 = 123.456f;
+								x.inner = new MyStruct { A = 5, inner = new Inner() { name = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' }) }, strr = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' }) };
 								x.str = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' });
 								x.haha = "";
 								x.alert = null;
@@ -271,7 +271,18 @@ namespace Tests
 			//public int Haha { get { return _haha; } }
 
 			object hoho;
-			public int a;
+			public float a;
+			static StructReader aReader = (r, ptr) =>
+			{
+				unsafe
+				{
+					fixed (byte* p = ptr.fixer)
+					{
+						r.Read4BytesTo((byte*)ptr.Ptr);
+					}
+				}
+			};
+
 			public Point pt;
 			public string str;
 			public int value;
@@ -302,8 +313,8 @@ namespace Tests
 			public string haha;
 			static ObjectReader hahaReader = CondReader<X>(o => true, (r, o) => "shit");
 
-            //public Inner inner;
-            public MyStruct inner;
+			//public Inner inner;
+			public MyStruct inner;
 
 			static StructReader pt2Reader = CondReader<X>(o =>
 			{
@@ -319,20 +330,20 @@ namespace Tests
             }*/
 		}
 
-        [UnsafeSerialize]
-        public struct MyStruct
-        {
-            public int A;
-            public Inner inner;
+		[UnsafeSerialize]
+		public struct MyStruct
+		{
+			public int A;
+			public Inner inner;
 
-            public string strr;
-            static ObjectReader strrReader = (r, o) => "strrrrrrrr";
+			public string strr;
+			static ObjectReader strrReader = (r, o) => "strrrrrrrr";
 
-            public override string ToString()
-            {
-                return this.ToStringUsingLayoutInfo();
-            }
-        }
+			public override string ToString()
+			{
+				return this.ToStringUsingLayoutInfo();
+			}
+		}
 
 		[UnsafeSerialize, StructLayout(LayoutKind.Sequential)]
 		public class Inner
@@ -346,16 +357,16 @@ namespace Tests
 				Console.WriteLine("Inner.Test: " + name);
 			}
 
-            public override string ToString()
-            {
-                return "Inner: " + name;
-            }
+			public override string ToString()
+			{
+				return "Inner: " + name;
+			}
 
-            /*~Inner()
+			/*~Inner()
             {
                 Console.Write("~Inner");
             }*/
-        }
+		}
 
 		[StructLayout(LayoutKind.Sequential)]
 		public struct Point
