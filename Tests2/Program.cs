@@ -30,6 +30,11 @@ namespace Tests
 			Console.Read();
 		}
 
+        public static void Test(int offset)
+        {
+
+        }
+
 		public static unsafe void Start(ILOGGER log)
 		{
 			LOGGER.impl = log;
@@ -47,7 +52,9 @@ namespace Tests
 			};
 			LayoutInfo.Add<Point>(defReaders);
 			LayoutInfo.Add<Inner>(defReaders);
-			LayoutInfo.Add<X>(defReaders);
+            LayoutInfo.Add<MyStruct>(defReaders);
+
+            LayoutInfo.Add<X>(defReaders);
 
 			var src = new X
 			{
@@ -85,10 +92,13 @@ namespace Tests
 						w.Write(pt.y);
 					}
 
+                    //inner struct...
+                    w.Write(999);
 					var str2 = "inner Name!";
 					for (var i = 0; i < str2.Length; i++)
 						w.Write(str2[i]);
 					w.Write((byte)0);
+
 					w.Write(620);
 				}
 				//using (var r = new BinaryReader(stream))
@@ -122,7 +132,7 @@ namespace Tests
 							var fvalue = t.GetField("value");
 							var fpt2 = t.GetField("pt2");
 
-							var N = 100;
+							var N = 1000 * 1000;
 
 							//GC.RegisterForFullGCNotification(10, 10);
 							/*new Thread(s => {
@@ -144,7 +154,7 @@ namespace Tests
 
 								x.a = i;
 								x.f64 = 123.0;
-								x.inner = new Inner();
+                                x.inner = new MyStruct { A = 5, inner = new Inner() };
 								x.str = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' });
 								x.haha = "";
 								x.alert = null;
@@ -162,7 +172,7 @@ namespace Tests
 
 							}
 							sw.Stop();
-							log.WriteLine("DIRECT = " + sw.ElapsedMilliseconds);
+							log.WriteLine("DIRECT = " + sw.ElapsedMilliseconds + " ms");
 							//arr = new X[N];
 							GC.Collect(2, GCCollectionMode.Forced, true);
 							GC.WaitForPendingFinalizers();
@@ -178,7 +188,7 @@ namespace Tests
 
 							}
 							sw.Stop();
-							log.WriteLine("READER = " + sw.ElapsedMilliseconds);
+							log.WriteLine("READER = " + sw.ElapsedMilliseconds + " ms");
 							//arr = new X[N];
 							GC.Collect(2, GCCollectionMode.Forced, true);
 							GC.WaitForPendingFinalizers();
@@ -193,7 +203,7 @@ namespace Tests
 
 								fa.SetValue(x, fastBuf.ReadByte());
 								ff64.SetValue(x, fastBuf.ReadByte());
-								finner.SetValue(x, new Inner());
+								finner.SetValue(x, new MyStruct { A = 1, inner = new Inner()});
 								fstr.SetValue(x, new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' }));
 								fnumMap.SetValue(x, new Dictionary<int, int> { { 112, 222 } });
 								fisOk.SetValue(x, Convert.ToBoolean(fastBuf.ReadByte()));
@@ -216,7 +226,7 @@ namespace Tests
 
 							}
 							sw.Stop();
-							log.WriteLine("REFLECT = " + sw.ElapsedMilliseconds);
+							log.WriteLine("REFLECT = " + sw.ElapsedMilliseconds + " ms");
 							//var file = File.CreateText("log.txt");*/
 
 
@@ -291,7 +301,8 @@ namespace Tests
 			public string haha;
 			static ObjectReader hahaReader = CondReader<X>(o => true, (r, o) => "shit");
 
-			public Inner inner;
+            //public Inner inner;
+            public MyStruct inner;
 
 			static StructReader pt2Reader = CondReader<X>(o =>
 			{
@@ -307,6 +318,21 @@ namespace Tests
             }*/
 		}
 
+        [UnsafeSerialize]
+        public struct MyStruct
+        {
+            public int A;
+            public Inner inner;
+
+            public string strr;
+            static ObjectReader strrReader = (r, o) => "strrrrrrrr";
+
+            public override string ToString()
+            {
+                return this.ToStringUsingLayoutInfo();
+            }
+        }
+
 		[UnsafeSerialize, StructLayout(LayoutKind.Sequential)]
 		public class Inner
 		{
@@ -319,11 +345,16 @@ namespace Tests
 				Console.WriteLine("Inner.Test: " + name);
 			}
 
-			/*~Inner()
+            public override string ToString()
+            {
+                return "Inner: " + name;
+            }
+
+            /*~Inner()
             {
                 Console.Write("~Inner");
             }*/
-		}
+        }
 
 		[StructLayout(LayoutKind.Sequential)]
 		public struct Point

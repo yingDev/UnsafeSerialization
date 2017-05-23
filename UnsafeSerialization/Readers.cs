@@ -37,8 +37,12 @@ namespace YingDev.UnsafeSerialization
                 else
 				{
                     var result = f.ObjectReader(r, owner);
-                    f.SetObjectField(owner, result);
-                    /*var fixer = new ObjectPtrHolder { value = result };
+                    //f.SetObjectField(owner, result);
+                    //if ((int)ptr.offset == 0)
+                    //    Debugger.Break();
+                    layout.SetObjectAtOffset(ptr.value, (IntPtr)ptr.offset + f.Offset, result);    
+                
+                /*var fixer = new ObjectPtrHolder { value = result };
 
 
                     //ss = result;

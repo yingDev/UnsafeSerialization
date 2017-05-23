@@ -64,6 +64,7 @@ namespace YingDev.UnsafeSerialization
 		static Dictionary<Type, LayoutInfo> _infoCache = new Dictionary<Type, LayoutInfo>(64);
 
 		public readonly LayoutField[] Fields;
+        public readonly Action<object, IntPtr, object> SetObjectAtOffset;
 
 		public static LayoutInfo Get(Type type)
 		{
@@ -74,9 +75,10 @@ namespace YingDev.UnsafeSerialization
 			throw new Exception("LayoutInfo Is Not Added for type: " + type.AssemblyQualifiedName);
 		}
 
-		LayoutInfo(LayoutField[] fields)
+		LayoutInfo(LayoutField[] fields, Action<object, IntPtr, object> setObjectAtOffset)
 		{
 			Fields = fields;
+            SetObjectAtOffset = setObjectAtOffset;
 		}
 
 		static IEnumerable<FieldInfo> _getAllFields(Type type)
@@ -227,8 +229,8 @@ namespace YingDev.UnsafeSerialization
                     if(! f.FieldType.IsValueType)
                     {
                         var methodName = $"__UnsafeSerialization_SetObject_{f.Name}";
-                        var method = f.DeclaringType.GetMethod(methodName, BindingFlags.Static | BindingFlags.Public);
-                        setter = (Action < object , object>) method.CreateDelegate(typeof(Action<object, object>));
+                        var method0 = f.DeclaringType.GetMethod(methodName, BindingFlags.Static | BindingFlags.Public);
+                        setter = (Action < object , object>) method0.CreateDelegate(typeof(Action<object, object>));
                     }
 
 
@@ -241,7 +243,14 @@ namespace YingDev.UnsafeSerialization
 				})
 				.ToArray();
 
-			return _infoCache[type] = new LayoutInfo(recognizedFields);
+            Action<object, IntPtr, object> setObjectAtOffset = null;
+            var method = type.GetMethod("__UnsafeSerialization_SetObjectAtOffset", BindingFlags.Static | BindingFlags.Public);
+            if(method != null)
+            {
+                setObjectAtOffset = (Action<object, IntPtr, object>) method.CreateDelegate(typeof(Action<object, IntPtr, object>));
+            }
+
+			return _infoCache[type] = new LayoutInfo(recognizedFields, setObjectAtOffset);
 		}
 
 		static Dictionary<string, ulong> GetFieldOffsets(Type type)

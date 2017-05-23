@@ -80,6 +80,7 @@ namespace YingDev.UnsafeSerializationPostProcessor
 			type.Methods.Add(method);
 
             Emit_Add_SetObject_Method_IL(type);
+            Emit_SetObjectAtOffset_IL(type);
 
         }
 
@@ -162,7 +163,7 @@ namespace YingDev.UnsafeSerializationPostProcessor
                 if (f.DeclaringType.GetMethods().Where(m => m.Name == methodName).SingleOrDefault() != null)
                     continue;
 
-                var setMethod = new MethodDefinition($"__UnsafeSerialization_SetObject_{f.Name}", MethodAttributes.Static | MethodAttributes.Public, type.Module.Import(typeof(void)));
+                var setMethod = new MethodDefinition(methodName, MethodAttributes.Static | MethodAttributes.Public, type.Module.Import(typeof(void)));
                 setMethod.Parameters.Add(new ParameterDefinition(type.Module.Import(typeof(object)))); //target
                 setMethod.Parameters.Add(new ParameterDefinition(type.Module.Import(typeof(object)))); //value
 
@@ -175,6 +176,57 @@ namespace YingDev.UnsafeSerializationPostProcessor
                 
                 f.DeclaringType.Methods.Add(setMethod);
             }
+
+
+        }
+
+        static void Emit_SetObjectAtOffset_IL(TypeDefinition type)
+        {
+            var mod = type.Module;
+            var methodName = $"__UnsafeSerialization_SetObjectAtOffset";
+
+            var setMethod = new MethodDefinition(methodName, MethodAttributes.Static | MethodAttributes.Public, type.Module.Import(typeof(void)));
+            setMethod.Parameters.Add(new ParameterDefinition(type.Module.Import(typeof(object)))); //target
+            setMethod.Parameters.Add(new ParameterDefinition(type.Module.Import(typeof(IntPtr)))); //offset
+            setMethod.Parameters.Add(new ParameterDefinition(type.Module.Import(typeof(object)))); //value
+
+            setMethod.Body.Variables.Add(new VariableDefinition(type.Module.Import(typeof(object))));
+            setMethod.Body.Variables.Add(new VariableDefinition(new PinnedType(new PointerType(mod.Import(typeof(byte))))));
+
+
+            var il = setMethod.Body.GetILProcessor();
+            var label0 = il.Create(OpCodes.Nop);
+            //pin
+            il.Emit(OC.Ldarg_0);
+            il.Emit(OC.Stloc_1);
+            //il.EmitWriteLine(mod, "A");
+            
+            //addr
+            il.Emit(OC.Ldarg_0);
+            // il.Emit(OC.Conv_I);
+
+            //il.Emit(OC.Brfalse, label0.Offset);
+
+            //label: target != null
+            il.Emit(OC.Ldarg_1);
+            il.Emit(OC.Add);
+            il.Emit(OC.Conv_I);
+            //il.EmitWriteLine(mod, "B");
+
+            il.Append(label0);
+
+            //value
+            il.Emit(OC.Ldarg_2);
+            //il.EmitWriteLine(mod, "B_0");
+
+            //store ref.
+            il.Emit(OC.Stind_Ref);
+            //il.EmitWriteLine(mod, "c");
+
+            il.Emit(OC.Nop);
+            il.Emit(OC.Ret);
+
+            type.Methods.Add(setMethod);
 
 
         }
