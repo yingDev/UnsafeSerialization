@@ -79,10 +79,10 @@ namespace YingDev.UnsafeSerializationPostProcessor
 			Emit_GetFieldOffsets_IL(type, method);
 			type.Methods.Add(method);
 
-            Emit_Add_SetObject_Method_IL(type);
-            Emit_SetObjectAtOffset_IL(type);
+			//Emit_Add_SetObject_Method_IL(type);
+			Emit_SetObjectAtOffset_IL(type);
 
-        }
+		}
 
 		static void Emit_GetFieldOffsets_IL(TypeDefinition type, MethodDefinition method)
 		{
@@ -151,83 +151,85 @@ namespace YingDev.UnsafeSerializationPostProcessor
 			il.Emit(OC.Ret);
 		}
 
-        static void Emit_Add_SetObject_Method_IL(TypeDefinition type)
-        {
-            var fields = GetInstFields(type).ToArray();
-            foreach(var f in fields)
-            {
-                if (f.FieldType.IsValueType)
-                    continue;
+		static void Emit_Add_SetObject_Method_IL(TypeDefinition type)
+		{
+			var fields = GetInstFields(type).ToArray();
+			foreach (var f in fields)
+			{
+				if (f.FieldType.IsValueType)
+					continue;
 
-                var methodName = $"__UnsafeSerialization_SetObject_{f.Name}";
-                if (f.DeclaringType.GetMethods().Where(m => m.Name == methodName).SingleOrDefault() != null)
-                    continue;
+				var methodName = $"__UnsafeSerialization_SetObject_{f.Name}";
+				if (f.DeclaringType.GetMethods().Where(m => m.Name == methodName).SingleOrDefault() != null)
+					continue;
 
-                var setMethod = new MethodDefinition(methodName, MethodAttributes.Static | MethodAttributes.Public, type.Module.Import(typeof(void)));
-                setMethod.Parameters.Add(new ParameterDefinition(type.Module.Import(typeof(object)))); //target
-                setMethod.Parameters.Add(new ParameterDefinition(type.Module.Import(typeof(object)))); //value
+				var setMethod = new MethodDefinition(methodName, MethodAttributes.Static | MethodAttributes.Public, type.Module.Import(typeof(void)));
+				setMethod.Parameters.Add(new ParameterDefinition(type.Module.Import(typeof(object)))); //target
+				setMethod.Parameters.Add(new ParameterDefinition(type.Module.Import(typeof(object)))); //value
 
-                var il = setMethod.Body.GetILProcessor();
-                il.Emit(OC.Ldarg_0);
-                il.Emit(OC.Ldarg_1);
-                il.Emit(OC.Stfld, f);
-                il.Emit(OC.Nop);
-                il.Emit(OC.Ret);
-                
-                f.DeclaringType.Methods.Add(setMethod);
-            }
+				var il = setMethod.Body.GetILProcessor();
+				il.Emit(OC.Ldarg_0);
+				il.Emit(OC.Ldarg_1);
+				il.Emit(OC.Stfld, f);
+				il.Emit(OC.Nop);
+				il.Emit(OC.Ret);
 
-
-        }
-
-        static void Emit_SetObjectAtOffset_IL(TypeDefinition type)
-        {
-            var mod = type.Module;
-            var methodName = $"__UnsafeSerialization_SetObjectAtOffset";
-
-            var setMethod = new MethodDefinition(methodName, MethodAttributes.Static | MethodAttributes.Public, type.Module.Import(typeof(void)));
-            setMethod.Parameters.Add(new ParameterDefinition(type.Module.Import(typeof(object)))); //target
-            setMethod.Parameters.Add(new ParameterDefinition(type.Module.Import(typeof(IntPtr)))); //offset
-            setMethod.Parameters.Add(new ParameterDefinition(type.Module.Import(typeof(object)))); //value
-
-            setMethod.Body.Variables.Add(new VariableDefinition(type.Module.Import(typeof(object))));
-            setMethod.Body.Variables.Add(new VariableDefinition(new PinnedType(new PointerType(mod.Import(typeof(byte))))));
+				f.DeclaringType.Methods.Add(setMethod);
+			}
 
 
-            var il = setMethod.Body.GetILProcessor();
-            //pin
-            il.Emit(OC.Ldarg_0);
-            il.Emit(OC.Stloc_1);
-            //il.EmitWriteLine(mod, "A");
-            
-            //addr
-            il.Emit(OC.Ldarg_0);
-            // il.Emit(OC.Conv_I);
+		}
+
+		static void Emit_SetObjectAtOffset_IL(TypeDefinition type)
+		{
+			var mod = type.Module;
+			var methodName = $"__UnsafeSerialization_SetObjectAtOffset";
+			if (type.Methods.Where(m => m.Name == methodName).Count() > 0)
+				return;
+
+			var setMethod = new MethodDefinition(methodName, MethodAttributes.Static | MethodAttributes.Public, type.Module.Import(typeof(void)));
+			setMethod.Parameters.Add(new ParameterDefinition(type.Module.Import(typeof(object)))); //target
+			setMethod.Parameters.Add(new ParameterDefinition(type.Module.Import(typeof(IntPtr)))); //offset
+			setMethod.Parameters.Add(new ParameterDefinition(type.Module.Import(typeof(object)))); //value
+
+			setMethod.Body.Variables.Add(new VariableDefinition(type.Module.Import(typeof(object))));
+			setMethod.Body.Variables.Add(new VariableDefinition(new PinnedType(new PointerType(mod.Import(typeof(byte))))));
 
 
-            //label: target != null
-            il.Emit(OC.Ldarg_1);
-            il.Emit(OC.Add);
-            il.Emit(OC.Conv_I);
-            //il.EmitWriteLine(mod, "B");
-            
-            //value
-            il.Emit(OC.Ldarg_2);
-            //il.EmitWriteLine(mod, "B_0");
+			var il = setMethod.Body.GetILProcessor();
+			//pin
+			il.Emit(OC.Ldarg_0);
+			il.Emit(OC.Stloc_1);
+			//il.EmitWriteLine(mod, "A");
 
-            //store ref.
-            il.Emit(OC.Stind_Ref);
-            //il.EmitWriteLine(mod, "c");
-
-            il.Emit(OC.Nop);
-            il.Emit(OC.Ret);
-
-            type.Methods.Add(setMethod);
+			//addr
+			il.Emit(OC.Ldarg_0);
+			il.Emit(OC.Conv_I);
 
 
-        }
+			//label: target != null
+			il.Emit(OC.Ldarg_1);
+			il.Emit(OC.Add);
+			il.Emit(OC.Conv_I);
+			//il.EmitWriteLine(mod, "B");
 
-        static void EmitWriteLine(this ILProcessor il, ModuleDefinition module, string msg)
+			//value
+			il.Emit(OC.Ldarg_2);
+			//il.EmitWriteLine(mod, "B_0");
+
+			//store ref.
+			il.Emit(OC.Stind_Ref);
+			//il.EmitWriteLine(mod, "c");
+
+			il.Emit(OC.Nop);
+			il.Emit(OC.Ret);
+
+			type.Methods.Add(setMethod);
+
+
+		}
+
+		static void EmitWriteLine(this ILProcessor il, ModuleDefinition module, string msg)
 		{
 			var console_tdef = module.Import(typeof(Console)).Resolve();
 			var string_tName = module.Import(typeof(string)).FullName;

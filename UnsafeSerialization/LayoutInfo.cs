@@ -17,11 +17,11 @@ namespace YingDev.UnsafeSerialization
 		public readonly Attribute[] Attributes;
 		public readonly FieldInfo Field;
 
-        public readonly Action<object, object> SetObjectField;
+		//public readonly Action<object, object> SetObjectField;
 
 		public unsafe LayoutField(string name, int offset, Type type,
 			StructReader structReader, ObjectReader objectReader,
-			Attribute[] attributes, FieldInfo field, Action<object, object> objectFieldSetter)
+								  Attribute[] attributes, FieldInfo field)//, Action<object, object> objectFieldSetter)
 		{
 			Name = name;
 			Offset = offset;
@@ -30,7 +30,7 @@ namespace YingDev.UnsafeSerialization
 			ObjectReader = objectReader;
 			Attributes = attributes;
 			Field = field;
-            SetObjectField = objectFieldSetter;
+			//SetObjectField = objectFieldSetter;
 		}
 	}
 
@@ -64,7 +64,7 @@ namespace YingDev.UnsafeSerialization
 		static Dictionary<Type, LayoutInfo> _infoCache = new Dictionary<Type, LayoutInfo>(64);
 
 		public readonly LayoutField[] Fields;
-        public readonly Action<object, IntPtr, object> SetObjectAtOffset;
+		public readonly Action<object, IntPtr, object> SetObjectAtOffset;
 
 		public static LayoutInfo Get(Type type)
 		{
@@ -78,7 +78,7 @@ namespace YingDev.UnsafeSerialization
 		LayoutInfo(LayoutField[] fields, Action<object, IntPtr, object> setObjectAtOffset)
 		{
 			Fields = fields;
-            SetObjectAtOffset = setObjectAtOffset;
+			SetObjectAtOffset = setObjectAtOffset;
 		}
 
 		static IEnumerable<FieldInfo> _getAllFields(Type type)
@@ -222,33 +222,33 @@ namespace YingDev.UnsafeSerialization
 					var attributes = attrs.OfType<Attribute>().ToArray();
 
 					var fieldOffset = ((int?)fieldOffsets?[f.DeclaringType.Name + "::" + f.Name]) ?? Marshal.OffsetOf(typeof(T), f.Name).ToInt32();
-                    //var offsetAttr = (FieldOffsetAttribute) attributes.FirstOrDefault(a=>a is FieldOffsetAttribute); //Marshal.OffsetOf(typeof(T), f.Name).ToInt32();
-                    //var offset = offsetAttr?.Value ?? Marshal.OffsetOf(typeof(T), f.Name).ToInt32();
+					//var offsetAttr = (FieldOffsetAttribute) attributes.FirstOrDefault(a=>a is FieldOffsetAttribute); //Marshal.OffsetOf(typeof(T), f.Name).ToInt32();
+					//var offset = offsetAttr?.Value ?? Marshal.OffsetOf(typeof(T), f.Name).ToInt32();
 
-                    Action<object, object> setter = null;
+					/*Action<object, object> setter = null;
                     if(! f.FieldType.IsValueType)
                     {
                         var methodName = $"__UnsafeSerialization_SetObject_{f.Name}";
                         var method0 = f.DeclaringType.GetMethod(methodName, BindingFlags.Static | BindingFlags.Public);
                         setter = (Action < object , object>) method0.CreateDelegate(typeof(Action<object, object>));
-                    }
+                    }*/
 
 
 					var fld = new LayoutField(f.Name,
 						fieldOffset,
 						f.FieldType,
-						structReader, objReader, attributes, f, setter);
+						structReader, objReader, attributes, f);
 
-                    return fld;
+					return fld;
 				})
 				.ToArray();
 
-            Action<object, IntPtr, object> setObjectAtOffset = null;
-            var method = type.GetMethod("__UnsafeSerialization_SetObjectAtOffset", BindingFlags.Static | BindingFlags.Public);
-            if(method != null)
-            {
-                setObjectAtOffset = (Action<object, IntPtr, object>) method.CreateDelegate(typeof(Action<object, IntPtr, object>));
-            }
+			Action<object, IntPtr, object> setObjectAtOffset = null;
+			var method = type.GetMethod("__UnsafeSerialization_SetObjectAtOffset", BindingFlags.Static | BindingFlags.Public);
+			if (method != null)
+			{
+				setObjectAtOffset = (Action<object, IntPtr, object>)method.CreateDelegate(typeof(Action<object, IntPtr, object>));
+			}
 
 			return _infoCache[type] = new LayoutInfo(recognizedFields, setObjectAtOffset);
 		}

@@ -38,7 +38,7 @@
       <CustomCommands>
         <Command>
           <type>AfterBuild</type>
-          <command>mono ${SolutionDir}/UnsafeSerializationPostProcessor/bin/Debug/UnsafeSerializationPostProcessor.exe ${TargetPath}</command>
+          <command>mono "${SolutionDir}/UnsafeSerializationPostProcessor/bin/Debug/UnsafeSerializationPostProcessor.exe" "${TargetPath}"</command>
         </Command>
       </CustomCommands>
     </CustomCommands>
@@ -56,7 +56,7 @@
       <CustomCommands>
         <Command>
           <type>AfterBuild</type>
-          <command>mono ${SolutionDir}/UnsafeSerializationPostProcessor/bin/Release/UnsafeSerializationPostProcessor.exe ${TargetPath}</command>
+          <command>mono "${SolutionDir}/UnsafeSerializationPostProcessor/bin/Release/UnsafeSerializationPostProcessor.exe" "${TargetPath}"</command>
         </Command>
       </CustomCommands>
     </CustomCommands>
@@ -98,7 +98,4 @@
     </BootstrapperPackage>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
-  <PropertyGroup>
-    <PostBuildEvent>$(SolutionDir)\UnsafeSerializationPostProcessor\bin\$(ConfigurationName)\UnsafeSerializationPostProcessor.exe $(TargetPath)</PostBuildEvent>
-  </PropertyGroup>
 </Project>
