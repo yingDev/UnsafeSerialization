@@ -110,7 +110,7 @@ namespace Tests
 						var result = (X)MessageReader(fastBuf, typeof(X));
 						// GC.Collect();
 						log.WriteLine(result.ToString());
-
+                        Thread.Sleep(1000);
 
 
 						unsafe
@@ -174,8 +174,8 @@ namespace Tests
 							sw.Stop();
 							log.WriteLine("DIRECT = " + sw.ElapsedMilliseconds + " ms");
 							//arr = new X[N];
-							GC.Collect(2, GCCollectionMode.Forced, true);
-							GC.WaitForPendingFinalizers();
+							//GC.Collect(2, GCCollectionMode.Forced, true);
+							//GC.WaitForPendingFinalizers();
 							Thread.Sleep(1000);
 
 							sw.Reset();
@@ -190,8 +190,8 @@ namespace Tests
 							sw.Stop();
 							log.WriteLine("READER = " + sw.ElapsedMilliseconds + " ms");
 							//arr = new X[N];
-							GC.Collect(2, GCCollectionMode.Forced, true);
-							GC.WaitForPendingFinalizers();
+							//GC.Collect(2, GCCollectionMode.Forced, true);
+							//GC.WaitForPendingFinalizers();
 							Thread.Sleep(1000);
 
 							sw.Reset();
