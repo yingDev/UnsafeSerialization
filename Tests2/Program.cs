@@ -62,7 +62,7 @@ namespace Tests
 				a = 123,
 				str = "hello world",
 				value = 789,
-				pts = new[] { new Point { x = 1990, y = 2 }, new Point { x = 3, y = 4 }, new Point { x = 5, y = 6 } }
+				//pts = new[] { new Point { x = 1990, y = 2 }, new Point { x = 3, y = 4 }, new Point { x = 5, y = 6 } }
 			};
 
 			using (var stream = new MemoryStream(1280))
@@ -83,7 +83,8 @@ namespace Tests
 					w.Write(src.value);
 					w.Write(true);
 					w.Write(123.0);
-					// w.Write(DateTime.Now.Ticks);
+                    // w.Write(DateTime.Now.Ticks);
+                    src.pts = Enumerable.Range(0, 3).Select(i => new Point { x = i * 2, y = i * 2 + 1 }).ToArray();
 					w.Write((byte)src.pts.Length);
 					for (var i = 0; i < src.pts.Length; i++)
 					{
@@ -154,7 +155,7 @@ namespace Tests
 
 								x.a = i;
 								x.f64 = 123.0;
-                                x.inner = new MyStruct { A = 5, inner = new Inner() };
+                                x.inner = new MyStruct { A = 5, inner = new Inner() { name = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' }) }, strr = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' }) };
 								x.str = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' });
 								x.haha = "";
 								x.alert = null;
@@ -203,7 +204,7 @@ namespace Tests
 
 								fa.SetValue(x, fastBuf.ReadByte());
 								ff64.SetValue(x, fastBuf.ReadByte());
-								finner.SetValue(x, new MyStruct { A = 1, inner = new Inner()});
+								finner.SetValue(x, new MyStruct { A = 5, inner = new Inner() { name = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' }) }, strr = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' }) });
 								fstr.SetValue(x, new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' }));
 								fnumMap.SetValue(x, new Dictionary<int, int> { { 112, 222 } });
 								fisOk.SetValue(x, Convert.ToBoolean(fastBuf.ReadByte()));

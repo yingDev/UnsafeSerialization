@@ -80,13 +80,6 @@ namespace YingDev.UnsafeSerialization.Utils
         }*/
 	}
 
-	[StructLayout(LayoutKind.Explicit)]
-	public struct ObjAddrHelper
-	{
-		[FieldOffset(0)] public object temp;
-		[FieldOffset(8)] public byte dum;
-	}
-
 	[StructLayout(LayoutKind.Sequential, Pack = 1)]
 	public struct StructAddrHelper<T> //where T : struct
 	{

@@ -15,7 +15,7 @@ namespace YingDev.UnsafeSerialization
 
 	public static class Readers
 	{
-		public unsafe static void _LayoutReader(UnsafeBinaryReader r, ObjectPtrHolder ptr, LayoutInfo layout, object owner)
+        public unsafe static void _LayoutReader(UnsafeBinaryReader r, ObjectPtrHolder ptr, LayoutInfo layout)//, object owner)
 		{
 			var fields = layout.Fields;
 			//LOGGER.WriteLine("_layoutReader: fields=" + string.Join(",", fields.Select(f => f.Name)));
@@ -26,46 +26,14 @@ namespace YingDev.UnsafeSerialization
 				//LOGGER.WriteLine("_LayoutReader: " + f.Name + " @" + f.Offset);
 				if (f.StructReader != null)
 				{
-                    //var tempPtr = ptr;
-                    //tempPtr.offset = ptr.offset + f.Offset;
                     ptr.offset += f.Offset;
-
                     f.StructReader(r, ptr);
                     ptr.offset -= f.Offset;
-
                 }
                 else
 				{
-                    var result = f.ObjectReader(r, owner);
-                    //f.SetObjectField(owner, result);
-                    //if ((int)ptr.offset == 0)
-                    //    Debugger.Break();
+                    var result = f.ObjectReader(r, ptr.value);
                     layout.SetObjectAtOffset(ptr.value, (IntPtr)ptr.offset + f.Offset, result);    
-                
-                /*var fixer = new ObjectPtrHolder { value = result };
-
-
-                    //ss = result;
-                    unsafe
-                    {
-						if (result != null)
-						{
-                            ss = result;
-                            fixed (byte* p2 = tempPtr.fixer)
-							{
-								fixed (byte* p = fixer.fixer)
-								{
-                                    //f.Field.SetValueDirect(TypedReference.MakeTypedReference())
-                                    //f.Field.SetValue(owner, result);
-                                    //*(void**)tempPtr.Ptr = fixer.target;
-                                    //Marshal.WriteIntPtr(tempPtr.value, (int)tempPtr.offset, (IntPtr)fixer.target);
-                                    //Marshal.WriteIntPtr((IntPtr)tempPtr.Ptr, (IntPtr)fixer.target);
-								}
-							}
-                            //GC.KeepAlive(result);
-						}
-					}*/
-
                 }
             }
 		}
@@ -82,7 +50,7 @@ namespace YingDev.UnsafeSerialization
 			{
 				if (layout == null)
 					layout = LayoutInfo.Get(type);
-				_LayoutReader(r, p, layout, null);
+                _LayoutReader(r, p, layout);//, null);
 			};
 		}
 
@@ -90,7 +58,7 @@ namespace YingDev.UnsafeSerialization
 		{
 			var layout = LayoutInfo.Get(type);
 			var msg = Activator.CreateInstance(type);
-			_LayoutReader(r, new ObjectPtrHolder { value = msg }, layout, msg);
+            _LayoutReader(r, new ObjectPtrHolder { value = msg }, layout);//, msg);
 			return msg;
 		}
 

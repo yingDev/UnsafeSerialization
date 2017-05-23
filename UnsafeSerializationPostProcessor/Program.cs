@@ -195,7 +195,6 @@ namespace YingDev.UnsafeSerializationPostProcessor
 
 
             var il = setMethod.Body.GetILProcessor();
-            var label0 = il.Create(OpCodes.Nop);
             //pin
             il.Emit(OC.Ldarg_0);
             il.Emit(OC.Stloc_1);
@@ -205,16 +204,13 @@ namespace YingDev.UnsafeSerializationPostProcessor
             il.Emit(OC.Ldarg_0);
             // il.Emit(OC.Conv_I);
 
-            //il.Emit(OC.Brfalse, label0.Offset);
 
             //label: target != null
             il.Emit(OC.Ldarg_1);
             il.Emit(OC.Add);
             il.Emit(OC.Conv_I);
             //il.EmitWriteLine(mod, "B");
-
-            il.Append(label0);
-
+            
             //value
             il.Emit(OC.Ldarg_2);
             //il.EmitWriteLine(mod, "B_0");

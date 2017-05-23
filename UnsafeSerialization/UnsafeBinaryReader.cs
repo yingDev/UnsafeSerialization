@@ -17,15 +17,19 @@ namespace YingDev.UnsafeSerialization
 			//fixed (byte* p = &_buf[_rPos])
 			{
                 var src = p+_rPos;
-                /*while(size-->0)
+                /*if(size < 16)
                 {
-                    *dest++ = *src++;
-                }*/
-                //Buffer.MemoryCopy(src, dest, size, size);
+                    while(size-->0)
+                    {
+                        *dest++ = *src++;
+                    }
+                }
+                else*/
+                Buffer.MemoryCopy(src, dest, size, size);
                 _rPos += size;
 
 
-                while (size >= 8)
+               /* while (size >= 8)
                 {
                     *dest = *src;
                     dest[1] = src[1];
@@ -49,7 +53,7 @@ namespace YingDev.UnsafeSerialization
                 }
                 if (size <= 0)
                     return;
-                *dest = *src; 
+                *dest = *src; */
             }
         }
 
@@ -89,10 +93,10 @@ namespace YingDev.UnsafeSerialization
         StringBuilder _cstrSb = new StringBuilder(128);
         public unsafe string ReadCString(int lengthHint = 16)
 		{
-			
-			//Console.WriteLine("ReadCString: pos = " + _rPos);
-			//var sb = new StringBuilder(lengthHint);
-			_cstrSb.Clear();
+
+            //Console.WriteLine("ReadCString: pos = " + _rPos);
+            //var sb = new StringBuilder(lengthHint);
+            _cstrSb.Length = 0;
             char ch;
             while ((ch = (char) *(p + _rPos++)) != 0)
                 _cstrSb.Append(ch);
