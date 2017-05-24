@@ -20,7 +20,10 @@ namespace YingDev.UnsafeSerializationPostProcessor
 		static void Main(string[] args)
 		{
 			var file = ValidateArgs(args);
-			var dll = AssemblyDefinition.ReadAssembly(file);
+            var readerParam = new ReaderParameters { ReadSymbols = true, ReadWrite = true};
+            var writerParam = new WriterParameters { WriteSymbols = true };
+            
+            var dll = AssemblyDefinition.ReadAssembly(file, readerParam);
 
 			var assemblyModified = false;
 
@@ -38,8 +41,9 @@ namespace YingDev.UnsafeSerializationPostProcessor
 
 			if (assemblyModified)
 			{
-				dll.Write(file);
-				WriteLine($"File has been processed.");
+                dll.Write(file, writerParam);
+
+                WriteLine($"File has been processed.");
 			}
 			else
 				WriteLine($"No class/struct with attribute [{MARKER_ATTR}] found!");
@@ -69,12 +73,12 @@ namespace YingDev.UnsafeSerializationPostProcessor
 			if (targetMethod != null)
 				type.Methods.Remove(targetMethod);
 
-			var string_t = mod.Import(typeof(string));
-			var ulong_t = mod.Import(typeof(ulong));
-			var dict_t = mod.Import(mod.Import(typeof(Dictionary<,>)).Resolve().MakeGenericInstanceType(string_t, ulong_t));
+			var string_t = mod.ImportReference(typeof(string));
+			var ulong_t = mod.ImportReference(typeof(ulong));
+			var dict_t = mod.ImportReference(mod.ImportReference(typeof(Dictionary<,>)).Resolve().MakeGenericInstanceType(string_t, ulong_t));
 
 			var method = new MethodDefinition(GENERATED_METHOD_NAME, MethodAttributes.Public | MethodAttributes.Static, dict_t);
-			method.Parameters.Add(new ParameterDefinition("inst", ParameterAttributes.None, mod.Import(typeof(object))));
+			method.Parameters.Add(new ParameterDefinition("inst", ParameterAttributes.None, mod.ImportReference(typeof(object))));
 
 			Emit_GetFieldOffsets_IL(type, method);
 			type.Methods.Add(method);
@@ -91,25 +95,25 @@ namespace YingDev.UnsafeSerializationPostProcessor
 			var il = method.Body.GetILProcessor();
 			var body = method.Body;
 
-			var ulong_t = mod.Import(typeof(ulong));
-			var int_t = mod.Import(typeof(int));
-			var string_t = mod.Import(typeof(string));
+			var ulong_t = mod.ImportReference(typeof(ulong));
+			var int_t = mod.ImportReference(typeof(int));
+			var string_t = mod.ImportReference(typeof(string));
 
-			var dict_tdef = mod.Import(typeof(Dictionary<,>)).Resolve();
-			var dictInst_t = (GenericInstanceType)mod.Import(dict_tdef.MakeGenericInstanceType(string_t, ulong_t));
+			var dict_tdef = mod.ImportReference(typeof(Dictionary<,>)).Resolve();
+			var dictInst_t = (GenericInstanceType)mod.ImportReference(dict_tdef.MakeGenericInstanceType(string_t, ulong_t));
 
-			var dictCtor = mod.Import(dict_tdef.GetConstructors().Where(m => m.Parameters.Count == 1 && m.Parameters[0].ParameterType.Name == int_t.Name).Single());
-			var dictSetter = mod.Import(dict_tdef.Methods.Where(m => m.Name == "set_Item").Single());
+			var dictCtor = mod.ImportReference(dict_tdef.GetConstructors().Where(m => m.Parameters.Count == 1 && m.Parameters[0].ParameterType.Name == int_t.Name).Single());
+			var dictSetter = mod.ImportReference(dict_tdef.Methods.Where(m => m.Name == "set_Item").Single());
 
-			dictCtor = mod.Import(MakeGenericMethod(dictCtor, dictInst_t, int_t));
-			dictSetter = mod.Import(MakeGenericMethod(dictSetter, dictInst_t, dict_tdef.GenericParameters[0], dict_tdef.GenericParameters[1]));
+			dictCtor = mod.ImportReference(MakeGenericMethod(dictCtor, dictInst_t, int_t));
+			dictSetter = mod.ImportReference(MakeGenericMethod(dictSetter, dictInst_t, dict_tdef.GenericParameters[0], dict_tdef.GenericParameters[1]));
 
 			var fields = GetInstFields(type).ToArray();
 
 			body.InitLocals = true;
 			body.Variables.Add(new VariableDefinition(dictInst_t));
 			body.Variables.Add(new VariableDefinition(ulong_t));
-			body.Variables.Add(new VariableDefinition(new PinnedType(new PointerType(mod.Import(typeof(byte))))));
+			body.Variables.Add(new VariableDefinition(new PinnedType(new PointerType(mod.ImportReference(typeof(byte))))));
 
 			//il.EmitWriteLine(mod, "A");
 
@@ -164,9 +168,9 @@ namespace YingDev.UnsafeSerializationPostProcessor
                 if (f.DeclaringType.GetMethods().Where(m => m.Name == methodName).SingleOrDefault() != null)
                     continue;
 
-                var setMethod = new MethodDefinition(methodName, MethodAttributes.Static | MethodAttributes.Public, type.Module.Import(typeof(void)));
-                setMethod.Parameters.Add(new ParameterDefinition(type.Module.Import(typeof(object)))); //target
-                setMethod.Parameters.Add(new ParameterDefinition(type.Module.Import(typeof(object)))); //value
+                var setMethod = new MethodDefinition(methodName, MethodAttributes.Static | MethodAttributes.Public, type.Module.ImportReference(typeof(void)));
+                setMethod.Parameters.Add(new ParameterDefinition(type.Module.ImportReference(typeof(object)))); //target
+                setMethod.Parameters.Add(new ParameterDefinition(type.Module.ImportReference(typeof(object)))); //value
 
                 var il = setMethod.Body.GetILProcessor();
                 il.Emit(OC.Ldarg_0);
@@ -192,13 +196,13 @@ namespace YingDev.UnsafeSerializationPostProcessor
                 return;
             }
 
-            var setMethod = new MethodDefinition(methodName, MethodAttributes.Static | MethodAttributes.Public, mod.Import(typeof(void)));
-            setMethod.Parameters.Add(new ParameterDefinition(mod.Import(typeof(object)))); //target
-            setMethod.Parameters.Add(new ParameterDefinition(mod.Import(typeof(IntPtr)))); //offset
-            setMethod.Parameters.Add(new ParameterDefinition(mod.Import(typeof(object)))); //value
+            var setMethod = new MethodDefinition(methodName, MethodAttributes.Static | MethodAttributes.Public, mod.ImportReference(typeof(void)));
+            setMethod.Parameters.Add(new ParameterDefinition(mod.ImportReference(typeof(object)))); //target
+            setMethod.Parameters.Add(new ParameterDefinition(mod.ImportReference(typeof(IntPtr)))); //offset
+            setMethod.Parameters.Add(new ParameterDefinition(mod.ImportReference(typeof(object)))); //value
 
-            //setMethod.Body.Variables.Add(new VariableDefinition(mod.Import(typeof(object))));
-            setMethod.Body.Variables.Add(new VariableDefinition(new PinnedType(new PointerType(mod.Import(typeof(byte))))));
+            //setMethod.Body.Variables.Add(new VariableDefinition(mod.ImportReference(typeof(object))));
+            setMethod.Body.Variables.Add(new VariableDefinition(new PinnedType(new PointerType(mod.ImportReference(typeof(byte))))));
 
 
             var il = setMethod.Body.GetILProcessor();
@@ -242,12 +246,12 @@ namespace YingDev.UnsafeSerializationPostProcessor
                 return;
             }
 
-            var method = new MethodDefinition(methodName, MethodAttributes.Static | MethodAttributes.Public, mod.Import(typeof(object)));
-            method.Parameters.Add(new ParameterDefinition(mod.Import(typeof(object)))); //target
-            method.Parameters.Add(new ParameterDefinition(mod.Import(typeof(IntPtr)))); //offset
+            var method = new MethodDefinition(methodName, MethodAttributes.Static | MethodAttributes.Public, mod.ImportReference(typeof(object)));
+            method.Parameters.Add(new ParameterDefinition(mod.ImportReference(typeof(object)))); //target
+            method.Parameters.Add(new ParameterDefinition(mod.ImportReference(typeof(IntPtr)))); //offset
 
-            method.Body.Variables.Add(new VariableDefinition(mod.Import(typeof(object))));
-            method.Body.Variables.Add(new VariableDefinition(new PinnedType(new PointerType(mod.Import(typeof(byte))))));
+            method.Body.Variables.Add(new VariableDefinition(mod.ImportReference(typeof(object))));
+            method.Body.Variables.Add(new VariableDefinition(new PinnedType(new PointerType(mod.ImportReference(typeof(byte))))));
 
             var il = method.Body.GetILProcessor();
 
@@ -275,9 +279,9 @@ namespace YingDev.UnsafeSerializationPostProcessor
 
         static void EmitWriteLine(this ILProcessor il, ModuleDefinition module, string msg)
 		{
-			var console_tdef = module.Import(typeof(Console)).Resolve();
-			var string_tName = module.Import(typeof(string)).FullName;
-			var writeLine = module.Import(console_tdef.Methods.Where(m => m.Name == nameof(Console.WriteLine) && m.Parameters.Count == 1 && m.Parameters[0].ParameterType.FullName == string_tName).Single());
+			var console_tdef = module.ImportReference(typeof(Console)).Resolve();
+			var string_tName = module.ImportReference(typeof(string)).FullName;
+			var writeLine = module.ImportReference(console_tdef.Methods.Where(m => m.Name == nameof(Console.WriteLine) && m.Parameters.Count == 1 && m.Parameters[0].ParameterType.FullName == string_tName).Single());
 
 			il.Emit(OC.Ldstr, msg);
 			il.Emit(OC.Call, writeLine);
