@@ -38,9 +38,6 @@ namespace YingDev.UnsafeSerialization.Utils
 
 		[FieldOffset(8)] public byte* offset;
 
-#if UNITY
-		[FieldOffset(0)] public byte* target;
-#else
 		public void* target
 		{
 			get
@@ -51,7 +48,6 @@ namespace YingDev.UnsafeSerialization.Utils
 				}
 			}
 		}
-#endif
 
 		public void* Ptr => obj == null ? offset : ((byte*)target + (int)offset);
 

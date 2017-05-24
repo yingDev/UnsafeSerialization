@@ -308,6 +308,7 @@ public struct MyStruct
     public Inner inner;
 
     public string strr;
+    static ObjectWriter strrWriter = (r, o) => { };//skip
     static ObjectReader strrReader = (r, o) => "strrrrrrrr";
 
     public override string ToString()
