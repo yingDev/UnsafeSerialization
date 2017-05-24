@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using YingDev.UnsafeSerialization;
 using MethodAttributes = Mono.Cecil.MethodAttributes;
 using OC = Mono.Cecil.Cil.OpCodes;
 using static System.Console;
@@ -14,8 +13,8 @@ namespace YingDev.UnsafeSerializationPostProcessor
 {
 	static class Program
 	{
-		const string GENERATED_METHOD_NAME = UnsafeSerializeAttribute.METHOD_GET_FIELD_OFFSETS_NAME;
-		static readonly string MARKER_ATTR = typeof(UnsafeSerializeAttribute).FullName;
+		const string GENERATED_METHOD_NAME = "__UnsafeSerialization_GetFieldOffsets";
+		static readonly string MARKER_ATTR = "YingDev.UnsafeSerialization.UnsafeSerializeAttribute";
         const string HELP = "Usage: UnsafeSerializationPostProcessor file [true|false]";
 
 
@@ -41,12 +40,25 @@ namespace YingDev.UnsafeSerializationPostProcessor
 
 			foreach (var mod in dll.Modules)
 			{
-				var markedTypes = mod.GetAllTypes()
-								  .Where(t => null != t.CustomAttributes.Where(a => a.AttributeType.FullName == MARKER_ATTR).SingleOrDefault());
+				var types = mod.GetAllTypes();
+				var markedTypes = types.Where(t => null != t.CustomAttributes.Where(a => a.AttributeType.FullName == MARKER_ATTR).SingleOrDefault());
 				foreach (var type in markedTypes)
 				{
 					WriteLine($"Processing: {type.FullName}");
 					AddGeneratedMethod(type);
+					assemblyModified = true;
+				}
+
+				// process UnsafeSerialization library itself
+				// the dll may or may not contain class LayoutInfo
+				var layoutInfoClass = types.Where(t => t.FullName == "YingDev.UnsafeSerialization.LayoutInfo").SingleOrDefault();
+				if (layoutInfoClass != null)
+				{
+					WriteLine("Found LayoutInfo, replacing some methods...");
+					
+					Emit_SetObjectAtOffset_IL(layoutInfoClass);
+					Emit_GetObjectAtOffset_IL(layoutInfoClass);
+
 					assemblyModified = true;
 				}
 			}
@@ -96,8 +108,8 @@ namespace YingDev.UnsafeSerializationPostProcessor
 			type.Methods.Add(method);
 
             //Emit_Add_SetObject_Method_IL(type);
-            Emit_SetObjectAtOffset_IL(type);
-            Emit_GetObjectAtOffset_IL(type);
+            //Emit_SetObjectAtOffset_IL(type);
+            //Emit_GetObjectAtOffset_IL(type);
 
         }
 
@@ -200,24 +212,27 @@ namespace YingDev.UnsafeSerializationPostProcessor
         static void Emit_SetObjectAtOffset_IL(TypeDefinition type)
         {
             var mod = type.Module;
-            var methodName = $"__UnsafeSerialization_SetObjectAtOffset";
+            var methodName = $"SetObjectAtOffset";
 
-            if (type.Methods.Where(m => m.Name == methodName).Count() > 0)
-            {
-                WriteLine("Method " + methodName + " already added. skipping.");
-                return;
-            }
+			var method = type.Methods.Where(m => m.Name == methodName).SingleOrDefault();
+			if (method != null)
+			{
+				WriteLine("Method " + methodName + " stub found. Replacing Impl...");
+				method.Body.Instructions.Clear();
+			}
+			else
+				throw new Exception(methodName + ": Stub method not defined!");
 
-            var setMethod = new MethodDefinition(methodName, MethodAttributes.Static | MethodAttributes.Public, mod.ImportReference(typeof(void)));
-            setMethod.Parameters.Add(new ParameterDefinition(mod.ImportReference(typeof(object)))); //target
-            setMethod.Parameters.Add(new ParameterDefinition(mod.ImportReference(typeof(IntPtr)))); //offset
-            setMethod.Parameters.Add(new ParameterDefinition(mod.ImportReference(typeof(object)))); //value
+           // var method = new MethodDefinition(methodName, MethodAttributes.Static | MethodAttributes.Public, mod.ImportReference(typeof(void)));
+           // method.Parameters.Add(new ParameterDefinition(mod.ImportReference(typeof(object)))); //target
+           // method.Parameters.Add(new ParameterDefinition(mod.ImportReference(typeof(IntPtr)))); //offset
+           // method.Parameters.Add(new ParameterDefinition(mod.ImportReference(typeof(object)))); //value
 
             //setMethod.Body.Variables.Add(new VariableDefinition(mod.ImportReference(typeof(object))));
-            setMethod.Body.Variables.Add(new VariableDefinition(new PinnedType(new PointerType(mod.ImportReference(typeof(byte))))));
+            method.Body.Variables.Add(new VariableDefinition(new PinnedType(new PointerType(mod.ImportReference(typeof(byte))))));
 
 
-            var il = setMethod.Body.GetILProcessor();
+            var il = method.Body.GetILProcessor();
             //pin
             il.Emit(OC.Ldarg_0);
             il.Emit(OC.Stloc_0);
@@ -245,22 +260,25 @@ namespace YingDev.UnsafeSerializationPostProcessor
             il.Emit(OC.Nop);
             il.Emit(OC.Ret);
 
-            type.Methods.Add(setMethod);
+            //type.Methods.Add(method);
         }
 
         static void Emit_GetObjectAtOffset_IL(TypeDefinition type)
         {
             var mod = type.Module;
-            var methodName = $"__UnsafeSerialization_GetObjectAtOffset";
-            if (type.Methods.Where(m => m.Name == methodName).Count() > 0)
-            {
-                WriteLine("Method " + methodName + " already added. skipping.");
-                return;
-            }
+            var methodName = $"GetObjectAtOffset";
+			var method = type.Methods.Where(m => m.Name == methodName).SingleOrDefault();
+			if (method != null)
+			{
+				WriteLine("Method " + methodName + " stub found. Replacing Impl...");
+				method.Body.Instructions.Clear();
+			}
+			else
+				throw new Exception(methodName + ": Stub method not defined!");
 
-            var method = new MethodDefinition(methodName, MethodAttributes.Static | MethodAttributes.Public, mod.ImportReference(typeof(object)));
-            method.Parameters.Add(new ParameterDefinition(mod.ImportReference(typeof(object)))); //target
-            method.Parameters.Add(new ParameterDefinition(mod.ImportReference(typeof(IntPtr)))); //offset
+			//var method = new MethodDefinition(methodName, MethodAttributes.Static | MethodAttributes.Public, mod.ImportReference(typeof(object)));
+            //method.Parameters.Add(new ParameterDefinition(mod.ImportReference(typeof(object)))); //target
+            //method.Parameters.Add(new ParameterDefinition(mod.ImportReference(typeof(IntPtr)))); //offset
 
             method.Body.Variables.Add(new VariableDefinition(mod.ImportReference(typeof(object))));
             method.Body.Variables.Add(new VariableDefinition(new PinnedType(new PointerType(mod.ImportReference(typeof(byte))))));
@@ -284,7 +302,7 @@ namespace YingDev.UnsafeSerializationPostProcessor
             il.Emit(OC.Ldloc_0);
             il.Emit(OC.Ret);
 
-            type.Methods.Add(method);
+            //type.Methods.Add(method);
 
 
         }

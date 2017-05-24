@@ -4,6 +4,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 15.0.26430.6
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnsafeSerialization", "UnsafeSerialization\UnsafeSerialization.csproj", "{EBA7E787-3301-4D71-89A0-59886210FC67}"
+	ProjectSection(ProjectDependencies) = postProject
+		{1FE7A0B1-5E4B-48F3-B07C-E77D98160021} = {1FE7A0B1-5E4B-48F3-B07C-E77D98160021}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnsafeSerializationPostProcessor", "UnsafeSerializationPostProcessor\UnsafeSerializationPostProcessor.csproj", "{1FE7A0B1-5E4B-48F3-B07C-E77D98160021}"
 EndProject

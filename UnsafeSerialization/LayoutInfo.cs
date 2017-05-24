@@ -67,13 +67,19 @@ namespace YingDev.UnsafeSerialization
     //todo: 应该 postProcess 这个，GetObjectxxX，SetObjectXXX 直接用IL替换。
 	public class LayoutInfo
 	{
-        public delegate object GetObjectAttOffsetFunc(object obj, IntPtr offset);
 
 		static Dictionary<RuntimeTypeHandle, LayoutInfo> _infoCache = new Dictionary<RuntimeTypeHandle, LayoutInfo>(64);
 
 		public readonly LayoutField[] Fields;
-        public readonly Action<object, IntPtr, object> SetObjectAtOffset;
-        public readonly GetObjectAttOffsetFunc GetObjectAtOffset;
+		public static void SetObjectAtOffset(object obj, IntPtr offset, object value)
+		{
+			throw new NotImplementedException(nameof(SetObjectAtOffset) + " is Supposed to be implemented in IL by the postprocessor");
+		}
+
+		public static object GetObjectAtOffset(object target, IntPtr offset)
+		{
+			throw new NotImplementedException(nameof(GetObjectAtOffset) + " is Supposed to be implemented in IL by the postprocessor");
+		}
 
 
         public static LayoutInfo Get(Type type)
@@ -85,12 +91,9 @@ namespace YingDev.UnsafeSerialization
 			throw new Exception("LayoutInfo Is Not Added for type: " + type.AssemblyQualifiedName);
 		}
 
-		LayoutInfo(LayoutField[] fields, Action<object, IntPtr, object> setObjectAtOffset, GetObjectAttOffsetFunc getObjectAtOffset)
+		LayoutInfo(LayoutField[] fields)
 		{
 			Fields = fields;
-            SetObjectAtOffset = setObjectAtOffset;
-            GetObjectAtOffset = getObjectAtOffset;
-
         }
 
 		static IEnumerable<FieldInfo> _getAllFields(Type type)
@@ -214,7 +217,7 @@ namespace YingDev.UnsafeSerialization
 				})
 				.ToArray();
 
-            Action<object, IntPtr, object> setObjectAtOffset = null;
+            /*Action<object, IntPtr, object> setObjectAtOffset = null;
             var method = type.GetMethod("__UnsafeSerialization_SetObjectAtOffset", BindingFlags.Static | BindingFlags.Public);
             if(method != null)
             {
@@ -226,10 +229,10 @@ namespace YingDev.UnsafeSerialization
             if(method1 != null)
             {
                 getObjectAtOffset = (GetObjectAttOffsetFunc)method1.CreateDelegate(typeof(GetObjectAttOffsetFunc));
-            }
+            }*/
 
 
-            return _infoCache[type.TypeHandle] = new LayoutInfo(recognizedFields, setObjectAtOffset, getObjectAtOffset);
+            return _infoCache[type.TypeHandle] = new LayoutInfo(recognizedFields);
 		}
 
         //todo: ReaderAttribute -> UnsafeSerialized

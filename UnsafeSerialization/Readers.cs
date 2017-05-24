@@ -33,7 +33,7 @@ namespace YingDev.UnsafeSerialization
                 else
 				{
                     var result = f.ObjectReader(r, ptr.obj);
-                    layout.SetObjectAtOffset(ptr.obj, (IntPtr)ptr.offset + f.Offset, result);    
+                    LayoutInfo.SetObjectAtOffset(ptr.obj, (IntPtr)ptr.offset + f.Offset, result);    
                 }
             }
 		}

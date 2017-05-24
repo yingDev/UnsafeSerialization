@@ -63,11 +63,5 @@
     <None Include="App.config" />
     <None Include="packages.config" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\UnsafeSerialization\UnsafeSerialization.csproj">
-      <Project>{eba7e787-3301-4d71-89a0-59886210fc67}</Project>
-      <Name>UnsafeSerialization</Name>
-    </ProjectReference>
-  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

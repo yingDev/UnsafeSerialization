@@ -85,7 +85,7 @@ namespace Tests
 
                 }).Start();*/
 
-                for(var i=0; i<10; i++)
+                for(var i=0; i<1; i++)
                 {
                     fastBuf._wPos = fastBuf._rPos = 0;
 
