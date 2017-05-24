@@ -16,12 +16,24 @@ namespace YingDev.UnsafeSerializationPostProcessor
 	{
 		const string GENERATED_METHOD_NAME = UnsafeSerializeAttribute.METHOD_GET_FIELD_OFFSETS_NAME;
 		static readonly string MARKER_ATTR = typeof(UnsafeSerializeAttribute).FullName;
+        const string HELP = "Usage: UnsafeSerializationPostProcessor file [true|false]";
 
-		static void Main(string[] args)
+
+        static void Main(string[] args)
 		{
 			var file = ValidateArgs(args);
-            var readerParam = new ReaderParameters { ReadSymbols = true, ReadWrite = true, InMemory = true};
-            var writerParam = new WriterParameters { WriteSymbols = true };
+            var writeSymbols = true;
+            if (args.Length > 1)
+            {
+                if (! bool.TryParse(args[1], out writeSymbols))
+                {
+                    WriteLine(HELP);
+                    Environment.Exit(0);
+                }
+            }
+
+            var readerParam = new ReaderParameters { ReadSymbols = writeSymbols, ReadWrite = true, InMemory = true};
+            var writerParam = new WriterParameters { WriteSymbols = writeSymbols };
             
             var dll = AssemblyDefinition.ReadAssembly(file, readerParam);
 
@@ -53,7 +65,7 @@ namespace YingDev.UnsafeSerializationPostProcessor
 		{
 			if (args.Length < 1)
 			{
-				WriteLine("Usage: UnsafeSerializationPostProcessor file");
+				WriteLine();
 				Environment.Exit(-1);
 			}
 

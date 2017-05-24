@@ -46,7 +46,7 @@
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <Optimize>false</Optimize>
+    <Optimize>true</Optimize>
     <OutputPath>bin\Release</OutputPath>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -99,6 +99,8 @@
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>$(SolutionDir)\UnsafeSerializationPostProcessor\bin\$(ConfigurationName)\UnsafeSerializationPostProcessor.exe $(TargetPath)</PostBuildEvent>
+    <PostBuildEvent>set writeSymbol=false
+if "$(ConfigurationName)" == "Debug" (set writeSymbol=true)
+$(SolutionDir)\UnsafeSerializationPostProcessor\bin\$(ConfigurationName)\UnsafeSerializationPostProcessor.exe $(TargetPath) %25writeSymbol%25</PostBuildEvent>
   </PropertyGroup>
 </Project>
