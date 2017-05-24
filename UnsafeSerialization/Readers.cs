@@ -207,6 +207,11 @@ namespace YingDev.UnsafeSerialization
 				return array;
 			};
 		}
+
+        public static object CStringReader(UnsafeBuffer r, object ptr)
+        {
+            return r.ReadCString();
+        }
 	}
 
 }

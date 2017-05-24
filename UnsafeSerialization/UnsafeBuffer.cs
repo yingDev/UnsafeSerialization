@@ -79,7 +79,7 @@ namespace YingDev.UnsafeSerialization
         }
 
         StringBuilder _cstrSb = new StringBuilder(128);
-        public unsafe string ReadCString(int lengthHint = 16)
+        public unsafe string ReadCString()
 		{
 
             //Console.WriteLine("ReadCString: pos = " + _rPos);

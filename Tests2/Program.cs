@@ -39,10 +39,7 @@ namespace Tests
                 {typeof(int), new StructReader(I32Reader)},
                 {typeof(bool), new StructReader(ByteReader)},
                 {typeof(double), new StructReader(F64Reader)},
-                {typeof(string), new ObjectReader((r, o) =>
-                {
-                    return r.ReadCString();
-                })},
+                {typeof(string), new ObjectReader(CStringReader)},
             };
             var defWriters = new Dictionary<Type, Delegate>
             {
