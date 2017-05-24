@@ -79,8 +79,9 @@ namespace YingDev.UnsafeSerializationPostProcessor
 			Emit_GetFieldOffsets_IL(type, method);
 			type.Methods.Add(method);
 
-            Emit_Add_SetObject_Method_IL(type);
+            //Emit_Add_SetObject_Method_IL(type);
             Emit_SetObjectAtOffset_IL(type);
+            Emit_GetObjectAtOffset_IL(type);
 
         }
 
@@ -185,19 +186,25 @@ namespace YingDev.UnsafeSerializationPostProcessor
             var mod = type.Module;
             var methodName = $"__UnsafeSerialization_SetObjectAtOffset";
 
-            var setMethod = new MethodDefinition(methodName, MethodAttributes.Static | MethodAttributes.Public, type.Module.Import(typeof(void)));
-            setMethod.Parameters.Add(new ParameterDefinition(type.Module.Import(typeof(object)))); //target
-            setMethod.Parameters.Add(new ParameterDefinition(type.Module.Import(typeof(IntPtr)))); //offset
-            setMethod.Parameters.Add(new ParameterDefinition(type.Module.Import(typeof(object)))); //value
+            if (type.Methods.Where(m => m.Name == methodName).Count() > 0)
+            {
+                WriteLine("Method " + methodName + " already added. skipping.");
+                return;
+            }
 
-            setMethod.Body.Variables.Add(new VariableDefinition(type.Module.Import(typeof(object))));
+            var setMethod = new MethodDefinition(methodName, MethodAttributes.Static | MethodAttributes.Public, mod.Import(typeof(void)));
+            setMethod.Parameters.Add(new ParameterDefinition(mod.Import(typeof(object)))); //target
+            setMethod.Parameters.Add(new ParameterDefinition(mod.Import(typeof(IntPtr)))); //offset
+            setMethod.Parameters.Add(new ParameterDefinition(mod.Import(typeof(object)))); //value
+
+            //setMethod.Body.Variables.Add(new VariableDefinition(mod.Import(typeof(object))));
             setMethod.Body.Variables.Add(new VariableDefinition(new PinnedType(new PointerType(mod.Import(typeof(byte))))));
 
 
             var il = setMethod.Body.GetILProcessor();
             //pin
             il.Emit(OC.Ldarg_0);
-            il.Emit(OC.Stloc_1);
+            il.Emit(OC.Stloc_0);
             //il.EmitWriteLine(mod, "A");
             
             //addr
@@ -223,6 +230,45 @@ namespace YingDev.UnsafeSerializationPostProcessor
             il.Emit(OC.Ret);
 
             type.Methods.Add(setMethod);
+        }
+
+        static void Emit_GetObjectAtOffset_IL(TypeDefinition type)
+        {
+            var mod = type.Module;
+            var methodName = $"__UnsafeSerialization_GetObjectAtOffset";
+            if (type.Methods.Where(m => m.Name == methodName).Count() > 0)
+            {
+                WriteLine("Method " + methodName + " already added. skipping.");
+                return;
+            }
+
+            var method = new MethodDefinition(methodName, MethodAttributes.Static | MethodAttributes.Public, mod.Import(typeof(object)));
+            method.Parameters.Add(new ParameterDefinition(mod.Import(typeof(object)))); //target
+            method.Parameters.Add(new ParameterDefinition(mod.Import(typeof(IntPtr)))); //offset
+
+            method.Body.Variables.Add(new VariableDefinition(mod.Import(typeof(object))));
+            method.Body.Variables.Add(new VariableDefinition(new PinnedType(new PointerType(mod.Import(typeof(byte))))));
+
+            var il = method.Body.GetILProcessor();
+
+            //pin
+            il.Emit(OC.Ldarg_0);
+            il.Emit(OC.Stloc_1);
+
+            //ret value
+            il.Emit(OC.Ldloca, 0);
+
+            il.Emit(OC.Ldarg_0);//+
+            il.Emit(OC.Ldarg_1);
+            il.Emit(OC.Add);
+
+            il.Emit(OC.Ldind_I); //get the ref
+
+            il.Emit(OC.Stind_Ref);
+            il.Emit(OC.Ldloc_0);
+            il.Emit(OC.Ret);
+
+            type.Methods.Add(method);
 
 
         }

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using static YingDev.UnsafeSerialization.Readers;
+using static YingDev.UnsafeSerialization.Writers;
 
 namespace YingDev.UnsafeSerialization
 {
@@ -14,23 +15,27 @@ namespace YingDev.UnsafeSerialization
 		public readonly Type Type;
 		public readonly StructReader StructReader;
 		public readonly ObjectReader ObjectReader;
+        public readonly StructWriter StructWriter;
+        public readonly ObjectWriter ObjectWriter;
 		public readonly Attribute[] Attributes;
 		public readonly FieldInfo Field;
 
-        public readonly Action<object, object> SetObjectField;
+        //public readonly Action<object, object> SetObjectField;
 
 		public unsafe LayoutField(string name, int offset, Type type,
-			StructReader structReader, ObjectReader objectReader,
-			Attribute[] attributes, FieldInfo field, Action<object, object> objectFieldSetter)
+			StructReader structReader, ObjectReader objectReader, StructWriter structWriter, ObjectWriter objectWriter,
+			Attribute[] attributes, FieldInfo field)//, Action<object, object> objectFieldSetter)
 		{
 			Name = name;
 			Offset = offset;
 			Type = type;
 			StructReader = structReader;
 			ObjectReader = objectReader;
+            StructWriter = structWriter;
+            ObjectWriter = objectWriter;
 			Attributes = attributes;
 			Field = field;
-            SetObjectField = objectFieldSetter;
+            //SetObjectField = objectFieldSetter;
 		}
 	}
 
@@ -59,27 +64,34 @@ namespace YingDev.UnsafeSerialization
 	}
 
 
+    //todo: 应该 postProcess 这个，GetObjectxxX，SetObjectXXX 直接用IL替换。
 	public class LayoutInfo
 	{
-		static Dictionary<Type, LayoutInfo> _infoCache = new Dictionary<Type, LayoutInfo>(64);
+        public delegate object GetObjectAttOffsetFunc(object obj, IntPtr offset);
+
+		static Dictionary<RuntimeTypeHandle, LayoutInfo> _infoCache = new Dictionary<RuntimeTypeHandle, LayoutInfo>(64);
 
 		public readonly LayoutField[] Fields;
         public readonly Action<object, IntPtr, object> SetObjectAtOffset;
+        public readonly GetObjectAttOffsetFunc GetObjectAtOffset;
 
-		public static LayoutInfo Get(Type type)
+
+        public static LayoutInfo Get(Type type)
 		{
 			LayoutInfo info;
-			if (_infoCache.TryGetValue(type, out info))
+			if (_infoCache.TryGetValue(type.TypeHandle, out info))
 				return info;
 
 			throw new Exception("LayoutInfo Is Not Added for type: " + type.AssemblyQualifiedName);
 		}
 
-		LayoutInfo(LayoutField[] fields, Action<object, IntPtr, object> setObjectAtOffset)
+		LayoutInfo(LayoutField[] fields, Action<object, IntPtr, object> setObjectAtOffset, GetObjectAttOffsetFunc getObjectAtOffset)
 		{
 			Fields = fields;
             SetObjectAtOffset = setObjectAtOffset;
-		}
+            GetObjectAtOffset = getObjectAtOffset;
+
+        }
 
 		static IEnumerable<FieldInfo> _getAllFields(Type type)
 		{
@@ -138,11 +150,12 @@ namespace YingDev.UnsafeSerialization
 			return ok;
 		}
 
-		public static LayoutInfo Add<T>(IDictionary<Type, Delegate> defaultFieldReaders)
+        //todo: Api improve
+		public static LayoutInfo Add<T>(IDictionary<Type, Delegate> defaultFieldReaders, IDictionary<Type, Delegate> defaultFieldWriter)
 		{
 			var type = typeof(T);
 			LayoutInfo info;
-			if (_infoCache.TryGetValue(type, out info))
+			if (_infoCache.TryGetValue(type.TypeHandle, out info))
 				return info;
 
 			/*if(!_validateLayoutAttr(type, false))
@@ -172,72 +185,30 @@ namespace YingDev.UnsafeSerialization
 			var recognizedFields = publicFields.OrderBy(f => f.MetadataToken)
 				.Select(f =>
 				{
-					var attrs = f.GetCustomAttributes(true);
+					var attributes = f.GetCustomAttributes(true).OfType<Attribute>().ToArray();
 
-					//2 - fetch reader
-					var readerAttr = (ReadAttribute)attrs.FirstOrDefault(a => a is ReadAttribute);
-					Delegate fieldReader;
-					if (readerAttr == null)
-					{
-						//todo: refactor
-						FieldInfo staticReaderField = null;
-						var searchType = type;
-						while (staticReaderField == null && searchType != null && searchType.BaseType != null)
-						{
-							staticReaderField = searchType.GetField(f.Name + "Reader",
-								BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public |
-								BindingFlags.FlattenHierarchy);
-							searchType = searchType.BaseType;
-						}
-						if (staticReaderField != null)
-						{
-							fieldReader = (Delegate)staticReaderField.GetValue(null);
-						}
-						else if (defaultFieldReaders.TryGetValue(f.FieldType, out fieldReader))
-						{
-						}
-						else
-						{
-							var layout = Get(f.FieldType);
-							if (layout != null)
-							{
-								if (f.FieldType.IsValueType)
-									fieldReader = LayoutReader(f.FieldType);
-								else
-									fieldReader = ObjectLayoutReader(f.FieldType);
-							}
-						}
-					}
-					else
-						fieldReader = (Delegate)readerAttr.ObjectReader ?? readerAttr.StructReader;
-
-					if (fieldReader == null)
-						throw new Exception(
-							"No reader available for " + type.FullName + "::" + f.Name + " (" + f.FieldType.FullName +
-							")");
-
-					var structReader = fieldReader as StructReader;
-					var objReader = fieldReader as ObjectReader;
-
-					var attributes = attrs.OfType<Attribute>().ToArray();
+                    var reader = GetFieldReader(type, f, defaultFieldReaders);
+                    var writer = GetFieldWriter(type, f, defaultFieldWriter);
 
 					var fieldOffset = ((int?)fieldOffsets?[f.DeclaringType.Name + "::" + f.Name]) ?? Marshal.OffsetOf(typeof(T), f.Name).ToInt32();
-                    //var offsetAttr = (FieldOffsetAttribute) attributes.FirstOrDefault(a=>a is FieldOffsetAttribute); //Marshal.OffsetOf(typeof(T), f.Name).ToInt32();
-                    //var offset = offsetAttr?.Value ?? Marshal.OffsetOf(typeof(T), f.Name).ToInt32();
 
-                    Action<object, object> setter = null;
+                    /*Action<object, object> setter = null;
                     if(! f.FieldType.IsValueType)
                     {
                         var methodName = $"__UnsafeSerialization_SetObject_{f.Name}";
                         var method0 = f.DeclaringType.GetMethod(methodName, BindingFlags.Static | BindingFlags.Public);
                         setter = (Action < object , object>) method0.CreateDelegate(typeof(Action<object, object>));
-                    }
+                    }*/
 
 
 					var fld = new LayoutField(f.Name,
 						fieldOffset,
 						f.FieldType,
-						structReader, objReader, attributes, f, setter);
+                        reader as StructReader,
+                        reader as ObjectReader,
+                        writer as StructWriter,
+                        writer as ObjectWriter,
+                        attributes, f);
 
                     return fld;
 				})
@@ -250,8 +221,109 @@ namespace YingDev.UnsafeSerialization
                 setObjectAtOffset = (Action<object, IntPtr, object>) method.CreateDelegate(typeof(Action<object, IntPtr, object>));
             }
 
-			return _infoCache[type] = new LayoutInfo(recognizedFields, setObjectAtOffset);
+            GetObjectAttOffsetFunc getObjectAtOffset = null;
+            var method1 = type.GetMethod("__UnsafeSerialization_GetObjectAtOffset", BindingFlags.Static | BindingFlags.Public);
+            if(method1 != null)
+            {
+                getObjectAtOffset = (GetObjectAttOffsetFunc)method1.CreateDelegate(typeof(GetObjectAttOffsetFunc));
+            }
+
+
+            return _infoCache[type.TypeHandle] = new LayoutInfo(recognizedFields, setObjectAtOffset, getObjectAtOffset);
 		}
+
+        //todo: ReaderAttribute -> UnsafeSerialized
+        static Delegate GetFieldReader(Type type, FieldInfo f, IDictionary<Type, Delegate> defaultFieldReaders)
+        {
+            var attrs = f.GetCustomAttributes(true);
+            var readerAttr = (ReadAttribute)attrs.FirstOrDefault(a => a is ReadAttribute);
+            Delegate fieldReader;
+            if (readerAttr == null)
+            {
+                FieldInfo staticReaderField = null;
+                var searchType = type;
+                while (staticReaderField == null && searchType != null && searchType.BaseType != null)
+                {
+                    staticReaderField = searchType.GetField(f.Name + "Reader",
+                        BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public |
+                        BindingFlags.FlattenHierarchy);
+                    searchType = searchType.BaseType;
+                }
+                if (staticReaderField != null)
+                {
+                    fieldReader = (Delegate)staticReaderField.GetValue(null);
+                }
+                else if (defaultFieldReaders.TryGetValue(f.FieldType, out fieldReader))
+                {
+                }
+                else
+                {
+                    var layout = Get(f.FieldType);
+                    if (layout != null)
+                    {
+                        if (f.FieldType.IsValueType)
+                            fieldReader = LayoutReader(f.FieldType);
+                        else
+                            fieldReader = ObjectLayoutReader(f.FieldType);
+                    }
+                }
+            }
+            else
+                fieldReader = (Delegate)readerAttr.ObjectReader ?? readerAttr.StructReader;
+
+            if (fieldReader == null)
+                throw new Exception(
+                    "No reader available for " + type.FullName + "::" + f.Name + " (" + f.FieldType.FullName +
+                    ")");
+
+            return fieldReader;
+        }
+
+        static Delegate GetFieldWriter(Type type, FieldInfo f, IDictionary<Type, Delegate> defaultFieldWriters)
+        {
+            var attrs = f.GetCustomAttributes(true);
+            var readerAttr = (ReadAttribute)attrs.FirstOrDefault(a => a is ReadAttribute);
+            Delegate fieldWriter;
+            if (readerAttr == null)
+            {
+                FieldInfo staticWriterField = null;
+                var searchType = type;
+                while (staticWriterField == null && searchType != null && searchType.BaseType != null)
+                {
+                    staticWriterField = searchType.GetField(f.Name + "Writer",
+                        BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public |
+                        BindingFlags.FlattenHierarchy);
+                    searchType = searchType.BaseType;
+                }
+                if (staticWriterField != null)
+                {
+                    fieldWriter = (Delegate)staticWriterField.GetValue(null);
+                }
+                else if (defaultFieldWriters.TryGetValue(f.FieldType, out fieldWriter))
+                {
+                }
+                else
+                {
+                    var layout = Get(f.FieldType);
+                    if (layout != null)
+                    {
+                        if (f.FieldType.IsValueType)
+                            fieldWriter = LayoutWriter(f.FieldType);
+                        else
+                            fieldWriter = ObjectLayoutWriter(f.FieldType);
+                    }
+                }
+            }
+            else
+                fieldWriter = (Delegate)readerAttr.ObjectReader ?? readerAttr.StructReader;
+
+            if (fieldWriter == null)
+                throw new Exception(
+                    "No writer available for " + type.FullName + "::" + f.Name + " (" + f.FieldType.FullName +
+                    ")");
+
+            return fieldWriter;
+        }
 
 		static Dictionary<string, ulong> GetFieldOffsets(Type type)
 		{

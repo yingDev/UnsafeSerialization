@@ -10,12 +10,12 @@ using YingDev.UnsafeSerialization.Utils;
 
 namespace YingDev.UnsafeSerialization
 {
-	public delegate void StructReader(UnsafeBinaryReader r, ObjectPtrHolder ptr);
-	public delegate object ObjectReader(UnsafeBinaryReader r, object owner);
+	public delegate void StructReader(UnsafeBuffer r, ObjectPtrHolder ptr);
+	public delegate object ObjectReader(UnsafeBuffer r, object owner);
 
 	public static class Readers
 	{
-        public unsafe static void _LayoutReader(UnsafeBinaryReader r, ObjectPtrHolder ptr, LayoutInfo layout)//, object owner)
+        public unsafe static void _LayoutReader(UnsafeBuffer r, ObjectPtrHolder ptr, LayoutInfo layout)//, object owner)
 		{
 			var fields = layout.Fields;
 			//LOGGER.WriteLine("_layoutReader: fields=" + string.Join(",", fields.Select(f => f.Name)));
@@ -32,8 +32,8 @@ namespace YingDev.UnsafeSerialization
                 }
                 else
 				{
-                    var result = f.ObjectReader(r, ptr.value);
-                    layout.SetObjectAtOffset(ptr.value, (IntPtr)ptr.offset + f.Offset, result);    
+                    var result = f.ObjectReader(r, ptr.obj);
+                    layout.SetObjectAtOffset(ptr.obj, (IntPtr)ptr.offset + f.Offset, result);    
                 }
             }
 		}
@@ -54,14 +54,6 @@ namespace YingDev.UnsafeSerialization
 			};
 		}
 
-		public static object MessageReader(UnsafeBinaryReader r, Type type)
-		{
-			var layout = LayoutInfo.Get(type);
-			var msg = Activator.CreateInstance(type);
-            _LayoutReader(r, new ObjectPtrHolder { value = msg }, layout);//, msg);
-			return msg;
-		}
-
 		public static ObjectReader ObjectLayoutReader<T>()
 		{
 			var type = typeof(T);
@@ -73,12 +65,22 @@ namespace YingDev.UnsafeSerialization
 			return (r, o) => MessageReader(r, type);
 		}
 
-		public static void I32Reader(UnsafeBinaryReader r, ObjectPtrHolder ptr)
+		public static object MessageReader(UnsafeBuffer r, Type type)
+		{
+			var layout = LayoutInfo.Get(type);
+			var msg = Activator.CreateInstance(type);
+            _LayoutReader(r, new ObjectPtrHolder { obj = msg }, layout);//, msg);
+			return msg;
+		}
+
+
+
+		public static void I32Reader(UnsafeBuffer r, ObjectPtrHolder ptr)
 		{
 			//LOGGER.WriteLine("I32Reader");
 			unsafe
 			{
-				if (ptr.value == null)
+				if (ptr.obj == null)
 					r.Read4BytesTo(ptr.offset); //*((int*) ptr.offset) = r.ReadInt32();
 				else
 					fixed (byte* p = ptr.fixer)
@@ -87,12 +89,12 @@ namespace YingDev.UnsafeSerialization
 			}
 		}
 
-		public static void ByteReader(UnsafeBinaryReader r, ObjectPtrHolder ptr)
+		public static void ByteReader(UnsafeBuffer r, ObjectPtrHolder ptr)
 		{
 			//LOGGER.WriteLine("ByteReader");
 			unsafe
 			{
-				if (ptr.value == null)
+				if (ptr.obj == null)
 					r.ReadByteTo(ptr.offset); //*((byte*) ptr.Ptr) = r.ReadByte();
 				else
 					fixed (byte* p = ptr.fixer)
@@ -100,12 +102,12 @@ namespace YingDev.UnsafeSerialization
 			}
 		}
 
-		public static void F64Reader(UnsafeBinaryReader r, ObjectPtrHolder ptr)
+		public static void F64Reader(UnsafeBuffer r, ObjectPtrHolder ptr)
 		{
 			//LOGGER.WriteLine("F64Reader");
 			unsafe
 			{
-				if (ptr.value == null)
+				if (ptr.obj == null)
 					r.Read8BytesTo(ptr.offset); //*((double*) ptr.Ptr) = r.ReadDouble();
 				else
 					fixed (byte* p = ptr.fixer)
@@ -134,7 +136,7 @@ namespace YingDev.UnsafeSerialization
 			{
 
 				//Console.WriteLine("Interesting");
-				var owner = ptr.value;
+				var owner = ptr.obj;
 				if (owner != null && pred((T)owner))
 				{
 					//Console.WriteLine("shitxxxxxx");
@@ -155,7 +157,7 @@ namespace YingDev.UnsafeSerialization
 				{
 					var array = (T[])arrayFactory(r, o);
 					var h = new StructAddrHelper<T>();
-					var ptr = new ObjectPtrHolder { value = null, offset = (&h.dum - sizeofT) };
+					var ptr = new ObjectPtrHolder { obj = null, offset = (&h.dum - sizeofT) };
 					for (var i = writeStartIndex; i < array.Length; i++)
 					{
 						itemReader(r, ptr);
@@ -177,7 +179,7 @@ namespace YingDev.UnsafeSerialization
 				{
 					//Console.Write("*");
 					var array = (T[])arrayFactory(r, o);
-					var ptr = new ObjectPtrHolder { value = array };
+					var ptr = new ObjectPtrHolder { obj = array };
 					fixed (byte* p = ptr.fixer)
 					{
 						r.ReadBytesTo(p, array.Length * sizeofT);

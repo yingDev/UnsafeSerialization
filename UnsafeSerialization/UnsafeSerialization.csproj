@@ -24,7 +24,8 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType></DebugType>
+    <DebugType>
+    </DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
@@ -45,8 +46,9 @@
   <ItemGroup>
     <Compile Include="LayoutInfo.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Writers.cs" />
     <Compile Include="Readers.cs" />
-    <Compile Include="UnsafeBinaryReader.cs" />
+    <Compile Include="UnsafeBuffer.cs" />
     <Compile Include="UnsafeSerializeAttribute.cs" />
     <Compile Include="Utils.cs" />
   </ItemGroup>

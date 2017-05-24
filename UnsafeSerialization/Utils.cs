@@ -33,7 +33,7 @@ namespace YingDev.UnsafeSerialization.Utils
 	[StructLayout(LayoutKind.Explicit)]
 	public unsafe struct ObjectPtrHolder
 	{
-		[FieldOffset(0)] public object value;
+		[FieldOffset(0)] public object obj;
 		[FieldOffset(0)] public byte[] fixer;
 
 		[FieldOffset(8)] public byte* offset;
@@ -53,7 +53,7 @@ namespace YingDev.UnsafeSerialization.Utils
 		}
 #endif
 
-		public void* Ptr => value == null ? offset : ((byte*)target + (int)offset);
+		public void* Ptr => obj == null ? offset : ((byte*)target + (int)offset);
 
 		/*public unsafe void Assign(IntPtr val)
         {
