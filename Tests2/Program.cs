@@ -75,146 +75,153 @@ namespace Tests
             };
 
             var data = new byte[1024];
-            
+
+            var N = 1000 * 1000;
 
             fixed (byte* dataPtr = &data[0])
             {
                 var fastBuf = new UnsafeBuffer { p = dataPtr };
+                /*new Thread(s =>
+                {
+                    while (true)
+                    {
+                        Thread.Sleep(100);
+                        Console.Write("*");
+                        GC.Collect(2, GCCollectionMode.Forced, true, true);
+                    }
 
-                MessageWriter(fastBuf, src);
+                }).Start();*/
 
+                var sw = new Stopwatch();
+                sw.Start();
+                for (var i = 0; i < N; i++)
+                {
+                    fastBuf._wPos = 0;
+                    MessageWriter(fastBuf, src);
+                }
+                sw.Stop();
+                Console.WriteLine("WRITER: " + sw.ElapsedMilliseconds);
+                GC.Collect(2, GCCollectionMode.Forced, true);
+                GC.WaitForPendingFinalizers();
 
                 var result = (X)MessageReader(fastBuf, typeof(X));
-                // GC.Collect();
                 log.WriteLine(result.ToString());
                 Thread.Sleep(1000);
 
+                var t = typeof(X);
 
-                unsafe
+                var fa = t.GetField("a");
+                var ff64 = t.GetField("f64");
+                var finner = t.GetField("inner");
+                var fstr = t.GetField("str");
+                var fnumMap = t.GetField("numMap");
+                var fhaha = t.GetField("haha");
+                var falert = t.GetField("alert");
+                var fisOk = t.GetField("isOk");
+                var fpts = t.GetField("pts");
+                var fpt = t.GetField("pt");
+                var fserverId = t.GetField("serverId");
+                //var ftime = t.GetField("time");
+                var fvalue = t.GetField("value");
+                var fpt2 = t.GetField("pt2");
+
+
+                //GC.RegisterForFullGCNotification(10, 10);
+
+                //Console.WriteLine(GC.TryStartNoGCRegion(N * 10));
+                //var arr = new X[N];
+                sw.Reset();
+                sw.Start();
+                for (var i = 0; i < N; i++)
                 {
-                    var t = typeof(X);
+                    fastBuf._rPos = 0;
+                    var x = (X)Activator.CreateInstance(typeof(X));
 
-                    var fa = t.GetField("a");
-                    var ff64 = t.GetField("f64");
-                    var finner = t.GetField("inner");
-                    var fstr = t.GetField("str");
-                    var fnumMap = t.GetField("numMap");
-                    var fhaha = t.GetField("haha");
-                    var falert = t.GetField("alert");
-                    var fisOk = t.GetField("isOk");
-                    var fpts = t.GetField("pts");
-                    var fpt = t.GetField("pt");
-                    var fserverId = t.GetField("serverId");
-                    //var ftime = t.GetField("time");
-                    var fvalue = t.GetField("value");
-                    var fpt2 = t.GetField("pt2");
+                    x.a = i;
+                    x.f64 = 123.0;
+                    x.inner = new MyStruct { A = 5, inner = new Inner() { name = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' }) }, strr = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' }) };
+                    x.str = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' });
+                    x.haha = "";
+                    x.alert = null;
+                    x.numMap = new Dictionary<int, int> { { 112, 222 } };
+                    x.isOk = i % 2 == 0;
+                    x.pts = new Point[]
+                        {new Point {x = 1, y = 2}, new Point {x = 3, y = 4}, new Point {x = 5, y = 6}};
+                    x.pt = new Point { x = 1, y = 1990 };
+                    x.serverId = 888;
+                    //x.time = new ValueBox<DateTime> {Value = DateTime.Now};
+                    x.value = i;
+                    x.pt2 = 222;
 
-                    var N = 1000 * 1000;
+                    //arr[i] = x;
 
-                    //GC.RegisterForFullGCNotification(10, 10);
-                    /*new Thread(s => {
-                        while(true)
+                }
+                sw.Stop();
+                log.WriteLine("DIRECT = " + sw.ElapsedMilliseconds + " ms");
+                //arr = new X[N];
+                GC.Collect(2, GCCollectionMode.Forced, true);
+                GC.WaitForPendingFinalizers();
+                Thread.Sleep(1000);
+
+                sw.Reset();
+                sw.Start();
+                for (var i = 0; i < N; i++)
+                {
+                    //Thread.Sleep(2);
+                    fastBuf._rPos = 0;
+                    MessageReader(fastBuf, t);
+
+                }
+                sw.Stop();
+                log.WriteLine("READER = " + sw.ElapsedMilliseconds + " ms");
+                //arr = new X[N];
+                GC.Collect(2, GCCollectionMode.Forced, true);
+                GC.WaitForPendingFinalizers();
+                Thread.Sleep(1000);
+
+                sw.Reset();
+                sw.Start();
+                for (var i = 0; i < N; i++)
+                {
+                    fastBuf._rPos = 0;
+                    var x = (X)Activator.CreateInstance(typeof(X));
+
+                    fa.SetValue(x, fastBuf.ReadByte());
+                    ff64.SetValue(x, fastBuf.ReadByte());
+                    finner.SetValue(x, new MyStruct { A = 5, inner = new Inner() { name = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' }) }, strr = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' }) });
+                    fstr.SetValue(x, new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' }));
+                    fnumMap.SetValue(x, new Dictionary<int, int> { { 112, 222 } });
+                    fisOk.SetValue(x, Convert.ToBoolean(fastBuf.ReadByte()));
+                    falert.SetValue(x, null);
+                    fhaha.SetValue(x, "haha");
+                    fpts.SetValue(x,
+                        new Point[]
                         {
-                            Thread.Sleep(100);
-                            Console.Write("*");
-                            GC.Collect(2, GCCollectionMode.Forced, true, true);
-                        }
-
-                    }).Start();*/
-                    //Console.WriteLine(GC.TryStartNoGCRegion(N * 10));
-                    //var arr = new X[N];
-                    var sw = Stopwatch.StartNew();
-                    for (var i = 0; i < N; i++)
-                    {
-                        fastBuf._rPos = 0;
-                        var x = (X)Activator.CreateInstance(typeof(X));
-
-                        x.a = i;
-                        x.f64 = 123.0;
-                        x.inner = new MyStruct { A = 5, inner = new Inner() { name = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' }) }, strr = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' }) };
-                        x.str = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' });
-                        x.haha = "";
-                        x.alert = null;
-                        x.numMap = new Dictionary<int, int> { { 112, 222 } };
-                        x.isOk = i % 2 == 0;
-                        x.pts = new Point[]
-                            {new Point {x = 1, y = 2}, new Point {x = 3, y = 4}, new Point {x = 5, y = 6}};
-                        x.pt = new Point { x = 1, y = 1990 };
-                        x.serverId = 888;
-                        //x.time = new ValueBox<DateTime> {Value = DateTime.Now};
-                        x.value = i;
-                        x.pt2 = 222;
-
-                        //arr[i] = x;
-
-                    }
-                    sw.Stop();
-                    log.WriteLine("DIRECT = " + sw.ElapsedMilliseconds + " ms");
-                    //arr = new X[N];
-                    //GC.Collect(2, GCCollectionMode.Forced, true);
-                    //GC.WaitForPendingFinalizers();
-                    Thread.Sleep(1000);
-
-                    sw.Reset();
-                    sw.Start();
-                    for (var i = 0; i < N; i++)
-                    {
-                        //Thread.Sleep(2);
-                        fastBuf._rPos = 0;
-                        MessageReader(fastBuf, t);
-
-                    }
-                    sw.Stop();
-                    log.WriteLine("READER = " + sw.ElapsedMilliseconds + " ms");
-                    //arr = new X[N];
-                    //GC.Collect(2, GCCollectionMode.Forced, true);
-                    //GC.WaitForPendingFinalizers();
-                    Thread.Sleep(1000);
-
-                    sw.Reset();
-                    sw.Start();
-                    for (var i = 0; i < N; i++)
-                    {
-                        fastBuf._rPos = 0;
-                        var x = (X)Activator.CreateInstance(typeof(X));
-
-                        fa.SetValue(x, fastBuf.ReadByte());
-                        ff64.SetValue(x, fastBuf.ReadByte());
-                        finner.SetValue(x, new MyStruct { A = 5, inner = new Inner() { name = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' }) }, strr = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' }) });
-                        fstr.SetValue(x, new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' }));
-                        fnumMap.SetValue(x, new Dictionary<int, int> { { 112, 222 } });
-                        fisOk.SetValue(x, Convert.ToBoolean(fastBuf.ReadByte()));
-                        falert.SetValue(x, null);
-                        fhaha.SetValue(x, "haha");
-                        fpts.SetValue(x,
-                            new Point[]
-                            {
                                     new Point {x = fastBuf.ReadByte(), y = fastBuf.ReadByte()},
                                     new Point {x = fastBuf.ReadByte(), y = fastBuf.ReadByte()},
                                     new Point {x = fastBuf.ReadByte(), y = fastBuf.ReadByte()}
-                            });
-                        fpt.SetValue(x, new Point { x = fastBuf.ReadByte(), y = fastBuf.ReadByte() });
-                        fserverId.SetValue(x, fastBuf.ReadByte());
-                        //ftime.SetValue(x, new ValueBox<DateTime> {Value = new DateTime((long) fastBuf.ReadByte())});
-                        fvalue.SetValue(x, fastBuf.ReadByte());
-                        fpt2.SetValue(x, fastBuf.ReadByte());
+                        });
+                    fpt.SetValue(x, new Point { x = fastBuf.ReadByte(), y = fastBuf.ReadByte() });
+                    fserverId.SetValue(x, fastBuf.ReadByte());
+                    //ftime.SetValue(x, new ValueBox<DateTime> {Value = new DateTime((long) fastBuf.ReadByte())});
+                    fvalue.SetValue(x, fastBuf.ReadByte());
+                    fpt2.SetValue(x, fastBuf.ReadByte());
 
-                        //arr[i] = x;
+                    //arr[i] = x;
 
-                    }
-                    sw.Stop();
-                    log.WriteLine("REFLECT = " + sw.ElapsedMilliseconds + " ms");
-                    //var file = File.CreateText("log.txt");*/
-
-
-                    Console.Read();
-                    for (var i = 0; i < 5; i++)
-                    {
-                        //Console.WriteLine(arr[i]);
-                    }
-                    Console.WriteLine("======");
-                    Console.Read();
                 }
+                sw.Stop();
+                log.WriteLine("REFLECT = " + sw.ElapsedMilliseconds + " ms");
+                //var file = File.CreateText("log.txt");*/
+
+
+                Console.Read();
+                for (var i = 0; i < 5; i++)
+                {
+                    //Console.WriteLine(arr[i]);
+                }
+                Console.WriteLine("======");
+                Console.Read();
             }
 
         }
@@ -271,7 +278,7 @@ public class X : BaseX
 
     public Point[] pts;
     static ObjectReader ptsReader = BlittableValueArrayReader<Point>((r, o) => new Point[r.ReadByte()]);
-    static ObjectWriter ptsWriter = ValueArrayWriter<Point>((w,o)=> w.WriteByte((byte)((Point[])o).Length) ,LayoutWriter<Point>());
+    static ObjectWriter ptsWriter = ValueArrayWriter<Point>((w, o) => w.WriteByte((byte)((Point[])o).Length), LayoutWriter<Point>());
 
     public object numMap;
     static ObjectReader numMapReader = (r, o) =>
