@@ -20,7 +20,7 @@ namespace YingDev.UnsafeSerializationPostProcessor
 		static void Main(string[] args)
 		{
 			var file = ValidateArgs(args);
-            var readerParam = new ReaderParameters { ReadSymbols = true, ReadWrite = true};
+            var readerParam = new ReaderParameters { ReadSymbols = true, ReadWrite = true, InMemory = true};
             var writerParam = new WriterParameters { WriteSymbols = true };
             
             var dll = AssemblyDefinition.ReadAssembly(file, readerParam);
