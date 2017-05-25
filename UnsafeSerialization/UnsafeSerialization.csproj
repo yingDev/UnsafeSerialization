@@ -55,7 +55,9 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>set writeSymbol=false
+
 if "$(ConfigurationName)" == "Debug" (set writeSymbol=true)
-$(SolutionDir)\UnsafeSerializationPostProcessor\bin\$(ConfigurationName)\UnsafeSerializationPostProcessor.exe $(TargetPath) %25writeSymbol%25</PostBuildEvent>
+
+$(ProjectDir)\..\UnsafeSerializationPostProcessor\bin\$(ConfigurationName)\UnsafeSerializationPostProcessor.exe $(TargetPath) %25writeSymbol%25</PostBuildEvent>
   </PropertyGroup>
 </Project>
