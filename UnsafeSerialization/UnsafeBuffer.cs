@@ -89,7 +89,7 @@ namespace YingDev.UnsafeSerialization
             while ((ch = (char) *(p + _rPos++)) != 0)
                 _cstrSb.Append(ch);
 			//Console.WriteLine("ReadCString: end pos = " + _rPos);
-			return _cstrSb.ToString();
+			return _cstrSb.Length == 0 ? string.Empty : _cstrSb.ToString();
         }
 
         public unsafe void WriteCString(string str)
