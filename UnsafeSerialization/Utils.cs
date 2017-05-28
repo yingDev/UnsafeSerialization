@@ -85,11 +85,11 @@ namespace YingDev.UnsafeSerialization.Utils
 
 	public static class ToStringEx
 	{
-		public static string ToStringUsingLayoutInfo<T>(this T obj)
+		public static string ToStringUsingLayoutInfo(Type t, object obj)
 		{
-			var layout = LayoutInfo.Get(typeof(T));
+			var layout = LayoutInfo.Get(t);
 			var sb = new StringBuilder(128);
-			sb.Append(typeof(T).Name);
+			sb.Append(t.Name);
 			sb.Append(":\n{\n");
 			foreach (var f in layout.Fields)
 			{
@@ -127,6 +127,11 @@ namespace YingDev.UnsafeSerialization.Utils
 			}
 			sb.Append("}\n");
 			return sb.ToString();
+		}
+
+		public static string ToStringUsingLayoutInfo<T>(this T obj)
+		{
+			return ToStringUsingLayoutInfo(typeof(T), obj);
 		}
 	}
 
