@@ -28,6 +28,18 @@ namespace YingDev.UnsafeSerialization
             _wPos += size;
         }
 
+		public void Read2BytesTo(byte* dest)
+		{
+			*(ushort*)dest = *(ushort*)(p + _rPos);
+			_rPos += 2;
+		}
+
+		public void Write2Bytes(byte* src)
+		{
+			*(ushort*) (p+_wPos) = *(ushort*)src;
+			_wPos += 2;
+		}
+
         public void Read4BytesTo(byte* dest)
 		{
 			//fixed (byte* p = &_buf[_rPos])
