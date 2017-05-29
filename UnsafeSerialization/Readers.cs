@@ -89,6 +89,18 @@ namespace YingDev.UnsafeSerialization
 			}
 		}
 
+		public static void U16Reader(UnsafeBuffer r, ObjectPtrHolder ptr)
+		{
+			unsafe
+			{
+				if (ptr.obj == null)
+					r.Read2BytesTo(ptr.offset); //*((int*) ptr.offset) = r.ReadInt32();
+				else
+					fixed (byte* p = ptr.fixer)
+						r.Read2BytesTo((byte*)ptr.target + (int)ptr.offset);
+			}
+		}
+
 		public static void ByteReader(UnsafeBuffer r, ObjectPtrHolder ptr)
 		{
 			//LOGGER.WriteLine("ByteReader");
