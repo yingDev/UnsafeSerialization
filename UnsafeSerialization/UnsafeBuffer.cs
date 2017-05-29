@@ -85,7 +85,35 @@ namespace YingDev.UnsafeSerialization
             //return _buf[_rPos++];
         }
 
-        public void WriteByte(byte value)
+		public UInt32 ReadeU32()
+		{
+			var val = *(UInt32*)(p + _rPos);
+			_rPos += 4;
+			return val;
+		}
+
+		public Int32 ReadI32()
+		{
+			var val = *(Int32*)(p + _rPos);
+			_rPos += 4;
+			return val;
+		}
+
+		public UInt16 ReadU16()
+		{
+			var val = *(UInt16*)(p + _rPos);
+			_rPos += 2;
+			return val;
+		}
+
+		public Int16 ReadI16()
+		{
+			var val = *(Int16*)(p + _rPos);
+			_rPos += 2;
+			return val;
+		}
+
+		public void WriteByte(byte value)
         {
             *(p + _wPos++) = value;
         }
