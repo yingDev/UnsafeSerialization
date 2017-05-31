@@ -65,12 +65,22 @@ namespace YingDev.UnsafeSerialization
 
 
     //todo: 应该 postProcess 这个，GetObjectxxX，SetObjectXXX 直接用IL替换。
-	public class LayoutInfo
+	public sealed class LayoutInfo
 	{
 
 		static Dictionary<RuntimeTypeHandle, LayoutInfo> _infoCache = new Dictionary<RuntimeTypeHandle, LayoutInfo>(64);
 
 		public readonly LayoutField[] Fields;
+		public readonly ObjectReader SelfReader;// { get; private set; }
+		public readonly Func<object> NewObj;// { get; private set; }
+
+		LayoutInfo(LayoutField[] fields, ObjectReader selfReader, Func<object> newObj)
+		{
+			Fields = fields;
+			SelfReader = selfReader;
+			NewObj = newObj;
+        }
+
 		public static void SetObjectAtOffset(object obj, IntPtr offset, object value)
 		{
 			throw new NotImplementedException(nameof(SetObjectAtOffset) + " is Supposed to be implemented in IL by the postprocessor");
@@ -80,7 +90,7 @@ namespace YingDev.UnsafeSerialization
 		{
 			throw new NotImplementedException(nameof(GetObjectAtOffset) + " is Supposed to be implemented in IL by the postprocessor");
 		}
-
+		
 
         public static LayoutInfo Get(Type type)
 		{
@@ -88,13 +98,11 @@ namespace YingDev.UnsafeSerialization
 			if (_infoCache.TryGetValue(type.TypeHandle, out info))
 				return info;
 
-			throw new Exception("LayoutInfo Is Not Added for type: " + type.AssemblyQualifiedName);
+			return null;
+			//throw new Exception("LayoutInfo Is Not Added for type: " + type.AssemblyQualifiedName);
 		}
 
-		LayoutInfo(LayoutField[] fields)
-		{
-			Fields = fields;
-        }
+
 
 		static IEnumerable<FieldInfo> _getAllFields(Type type)
 		{
@@ -160,6 +168,7 @@ namespace YingDev.UnsafeSerialization
 			LayoutInfo info;
 			if (_infoCache.TryGetValue(type.TypeHandle, out info))
 				return info;
+			
 
 			/*if(!_validateLayoutAttr(type, false))
                 throw new ArgumentException("Type layout is not Sequential/Explicit: " + type.FullName);*/
@@ -217,7 +226,7 @@ namespace YingDev.UnsafeSerialization
 				})
 				.ToArray();
 
-            /*Action<object, IntPtr, object> setObjectAtOffset = null;
+			/*Action<object, IntPtr, object> setObjectAtOffset = null;
             var method = type.GetMethod("__UnsafeSerialization_SetObjectAtOffset", BindingFlags.Static | BindingFlags.Public);
             if(method != null)
             {
@@ -230,9 +239,14 @@ namespace YingDev.UnsafeSerialization
             {
                 getObjectAtOffset = (GetObjectAttOffsetFunc)method1.CreateDelegate(typeof(GetObjectAttOffsetFunc));
             }*/
+			var newObjMethod = type.GetMethod("__UnsafeSerialization_NewObj", BindingFlags.Static | BindingFlags.Public);
+			var newObj = newObjMethod == null ? null : (Func<object>)newObjMethod.CreateDelegate(typeof(Func<object>));
 
-
-            return _infoCache[type.TypeHandle] = new LayoutInfo(recognizedFields);
+			var thisReaderField = type.GetField("thisReader", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
+			var selfReader = (ObjectReader)thisReaderField?.GetValue(null);
+		
+			info = new LayoutInfo(recognizedFields, selfReader, newObj);
+			return _infoCache[type.TypeHandle] = info;
 		}
 
         //todo: ReaderAttribute -> UnsafeSerialized
@@ -320,10 +334,10 @@ namespace YingDev.UnsafeSerialization
             else
                 fieldWriter = (Delegate)readerAttr.ObjectReader ?? readerAttr.StructReader;
 
-            if (fieldWriter == null)
+            /*if (fieldWriter == null)
                 throw new Exception(
                     "No writer available for " + type.FullName + "::" + f.Name + " (" + f.FieldType.FullName +
-                    ")");
+                    ")");*/
 
             return fieldWriter;
         }

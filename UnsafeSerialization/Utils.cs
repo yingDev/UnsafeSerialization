@@ -76,12 +76,12 @@ namespace YingDev.UnsafeSerialization.Utils
         }*/
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	/*[StructLayout(LayoutKind.Sequential, Pack = 1)]
 	public struct StructAddrHelper<T> //where T : struct
 	{
 		public T temp;
 		public byte dum;
-	}
+	}*/
 
 	public static class ToStringEx
 	{

@@ -46,6 +46,7 @@ namespace YingDev.UnsafeSerializationPostProcessor
 				{
 					WriteLine($"Processing: {type.FullName}");
 					AddGeneratedMethod(type);
+					Emit_NewObj_IL(type);
 					assemblyModified = true;
 				}
 
@@ -306,6 +307,28 @@ namespace YingDev.UnsafeSerializationPostProcessor
 
 
         }
+
+		static void Emit_NewObj_IL(TypeDefinition type)
+		{
+			var mod = type.Module;
+			var methodName = $"__UnsafeSerialization_NewObj";
+			if (type.Methods.Where(m => m.Name == methodName).Count() > 0)
+				return;
+
+			var ctor = type.GetConstructors().Where(c => c.Parameters.Count == 0).FirstOrDefault();
+			if (ctor == null)
+				throw new Exception("No param-less constructor found on type " + type.FullName);
+
+			var method = new MethodDefinition(methodName, MethodAttributes.Static | MethodAttributes.Public, mod.ImportReference(typeof(object)));
+			var il = method.Body.GetILProcessor();
+
+			//il.Body.Variables.Add(new VariableDefinition(type));
+
+			il.Emit(OC.Newobj, ctor);
+			il.Emit(OC.Ret);
+
+			type.Methods.Add(method);
+		}
 
         static void EmitWriteLine(this ILProcessor il, ModuleDefinition module, string msg)
 		{

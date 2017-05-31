@@ -66,7 +66,8 @@ namespace YingDev.UnsafeSerialization
             _LayoutWriter(r, new ObjectPtrHolder { obj = msg }, layout);//, msg);
         }
 
-        public static void I32Writer(UnsafeBuffer r, ObjectPtrHolder ptr)
+		public static StructWriter I32Writer = _I32Writer;
+        public static void _I32Writer(UnsafeBuffer r, ObjectPtrHolder ptr)
         {
             //LOGGER.WriteLine("I32Reader");
             unsafe
@@ -80,7 +81,8 @@ namespace YingDev.UnsafeSerialization
             }
         }
 
-		public static void U16Writer(UnsafeBuffer r, ObjectPtrHolder ptr)
+		public static StructWriter U16Writer = _U16Writer;
+		public static void _U16Writer(UnsafeBuffer r, ObjectPtrHolder ptr)
 		{
 			//LOGGER.WriteLine("I32Reader");
 			unsafe
@@ -94,7 +96,8 @@ namespace YingDev.UnsafeSerialization
 			}
 		}
 
-		public static void ByteWriter (UnsafeBuffer r, ObjectPtrHolder ptr)
+		public static StructWriter ByteWriter = _ByteWriter;
+		public static void _ByteWriter (UnsafeBuffer r, ObjectPtrHolder ptr)
         {
             //LOGGER.WriteLine("ByteReader");
             unsafe
@@ -107,7 +110,8 @@ namespace YingDev.UnsafeSerialization
             }
         }
 
-        public static void F64Writer(UnsafeBuffer r, ObjectPtrHolder ptr)
+		public static StructWriter F64Writer = _F64Writer;
+        public static void _F64Writer(UnsafeBuffer r, ObjectPtrHolder ptr)
         {
             //LOGGER.WriteLine("F64Reader");
             unsafe
@@ -120,7 +124,8 @@ namespace YingDev.UnsafeSerialization
             }
         }
 
-        public static void CStringWriter(UnsafeBuffer buf, object s)
+		public static ObjectWriter CStringWriter = _CStringWriter;
+        public static void _CStringWriter(UnsafeBuffer buf, object s)
         {
             buf.WriteCString((string)s);
         }
@@ -137,10 +142,13 @@ namespace YingDev.UnsafeSerialization
 
                 unsafe
                 {
+					var fixer = new ObjectPtrHolder { obj = array };
+					fixed(byte* p = fixer.fixer)
                     for(var i=0; i<array.Length; i++)
                     {
-                        var ptr = new StructAddrHelper<T> { temp = array[i] };
-                        itemWriter(w, new ObjectPtrHolder { offset = &ptr.dum - sizeofT});
+						//var ptr = new StructAddrHelper<T> { temp = array[i] };
+						var ptr = Marshal.UnsafeAddrOfPinnedArrayElement(array, i);
+                        itemWriter(w, new ObjectPtrHolder { offset = (byte*)ptr });
                     }
                     
                 }

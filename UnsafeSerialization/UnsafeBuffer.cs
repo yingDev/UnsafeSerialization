@@ -12,6 +12,7 @@ namespace YingDev.UnsafeSerialization
         //public byte[] _buf;
 
         public byte* p;
+		public byte* end;
 
         public void ReadBytesTo(byte* dest, int size)
 		{
@@ -85,7 +86,7 @@ namespace YingDev.UnsafeSerialization
             //return _buf[_rPos++];
         }
 
-		public UInt32 ReadeU32()
+		public UInt32 ReadU32()
 		{
 			var val = *(UInt32*)(p + _rPos);
 			_rPos += 4;
