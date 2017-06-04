@@ -10,6 +10,7 @@ namespace YingDev.UnsafeSerialization
         public int _wPos;
         public int _rPos;
         //public byte[] _buf;
+        public bool evalWriteLength;
 
         public byte* p;
 		public byte* end;
@@ -25,7 +26,8 @@ namespace YingDev.UnsafeSerialization
 
         public void WriteBytes(byte* src, int size)
         {
-            Buffer.MemoryCopy(src, p + _wPos, size, size);
+            if(!evalWriteLength)
+                Buffer.MemoryCopy(src, p + _wPos, size, size);
             _wPos += size;
         }
 
@@ -37,7 +39,8 @@ namespace YingDev.UnsafeSerialization
 
 		public void Write2Bytes(byte* src)
 		{
-			*(ushort*) (p+_wPos) = *(ushort*)src;
+            if (!evalWriteLength)
+                *(ushort*) (p+_wPos) = *(ushort*)src;
 			_wPos += 2;
 		}
 
@@ -50,7 +53,8 @@ namespace YingDev.UnsafeSerialization
 
         public void Write4Bytes(byte* src)
         {
-            *(uint*)(p + _wPos) = *(uint*)src;
+            if (!evalWriteLength)
+                *(uint*)(p + _wPos) = *(uint*)src;
             _wPos += 4;
         }
 
@@ -70,7 +74,8 @@ namespace YingDev.UnsafeSerialization
 
         public void Write8Bytes(byte* src)
         {
-            *(UInt64*)(p + _wPos) = *(UInt64*)src;
+            if (!evalWriteLength)
+                *(UInt64*)(p + _wPos) = *(UInt64*)src;
             _wPos += 8;
         }
 
@@ -116,7 +121,8 @@ namespace YingDev.UnsafeSerialization
 
 		public void WriteByte(byte value)
         {
-            *(p + _wPos++) = value;
+            if (!evalWriteLength)
+                *(p + _wPos++) = value;
         }
 
         StringBuilder _cstrSb = new StringBuilder(128);
@@ -135,11 +141,16 @@ namespace YingDev.UnsafeSerialization
 
         public unsafe void WriteCString(string str)
         {
-            for (var i = 0; i < str.Length; i++)
+            if (!evalWriteLength)
             {
-                p[_wPos++] = (byte)str[i];
+                for (var i = 0; i < str.Length; i++)
+                {
+                    p[_wPos++] = (byte)str[i];
+                }
+                p[_wPos++] = 0;
             }
-            p[_wPos++] = 0;
+            else
+                _wPos += str.Length + 1;
         }
     }
 }

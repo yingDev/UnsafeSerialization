@@ -5,6 +5,8 @@ using System.Runtime.InteropServices;
 using System.Text;
 using YingDev.UnsafeSerialization;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 
 namespace YingDev.UnsafeSerialization.Utils
 {
@@ -23,18 +25,18 @@ namespace YingDev.UnsafeSerialization.Utils
 		}
 	}
 
-	[StructLayout(LayoutKind.Explicit)]
+	/*[StructLayout(LayoutKind.Explicit)]
 	public unsafe struct ObjectFixer
 	{
 		[FieldOffset(0)] public object value;
 		[FieldOffset(0)] public byte[] fixer;
-	}
+	}*/
 
 	[StructLayout(LayoutKind.Explicit)]
 	public unsafe struct ObjectPtrHolder
 	{
 		[FieldOffset(0)] public object obj;
-		[FieldOffset(0)] public byte[] fixer;
+		//[FieldOffset(0)] public byte[] fixer;
 
 		[FieldOffset(8)] public byte* offset;
 
@@ -50,6 +52,12 @@ namespace YingDev.UnsafeSerialization.Utils
 		}
 
 		public void* Ptr => obj == null ? offset : ((byte*)target + (int)offset);
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public static unsafe byte* Pin(object o)
+		{
+			throw new NotImplementedException("This method is not supposed to be called. It should have been replace by the UnsafeSerializationPostProcessor");
+		}
 
 		/*public unsafe void Assign(IntPtr val)
         {
@@ -87,8 +95,15 @@ namespace YingDev.UnsafeSerialization.Utils
 	{
 		public static string ToStringUsingLayoutInfo(Type t, object obj)
 		{
-			var layout = LayoutInfo.Get(t);
-			var sb = new StringBuilder(128);
+			if (t.GetCustomAttribute(typeof(UnsafeSerializeAttribute)) == null)
+				return obj.ToString();
+
+			//overridden to string
+			if (t.GetMethod("ToString", Array.Empty<Type>()).DeclaringType == t)
+				return obj.ToString();
+
+			var layout = LayoutInfoRegistry.Get(t);
+			var sb = new StringBuilder(32);
 			sb.Append(t.Name);
 			sb.Append(":\n{\n");
 			foreach (var f in layout.Fields)
@@ -101,12 +116,6 @@ namespace YingDev.UnsafeSerialization.Utils
 				{
 					str = $"\"{value}\"";
 				}
-				else if (value.GetType().IsArray)
-				{
-					var arr = value as Array;
-					var items = string.Join(", ", ((Array)value).OfType<object>().Take(32));
-					str = $"[ {items} { (arr.Length > 32 ? ", ..." : string.Empty)} ]";
-				}
 				else if (typeof(IDictionary).IsAssignableFrom(value.GetType()))
 				{
 					var sb2 = new StringBuilder(128);
@@ -114,15 +123,23 @@ namespace YingDev.UnsafeSerialization.Utils
 					var dict = (IDictionary)value;
 					foreach (var k in dict.Keys)
 					{
-						sb2.Append($"{k}: {dict[k]}, ");
+						var val = dict[k];
+						sb2.Append($"{k}: {ToStringUsingLayoutInfo(val.GetType(), val)}, ");
 					}
 					if (sb2.Length > 1)
 						sb2.Remove(sb2.Length - 2, 1);
 					sb2.Append(" }");
 					str = sb2.ToString();
 				}
+				else if (typeof(IEnumerable).IsAssignableFrom(value.GetType()))
+				{
+					var objs = ((IEnumerable)value).OfType<object>();
+					var items = string.Join(", ", objs.Take(8).Select(v => v == null ? "null" : ToStringUsingLayoutInfo(v.GetType(), v)));
+					str = $"[ {items} { (objs.Count() > 8 ? ", ..." : string.Empty)} ]";
+				}
+
 				else
-					str = value.ToString();
+					str = ToStringUsingLayoutInfo(value.GetType(), value);
 				sb.Append($"  {f.Name}:\t{str}\n");
 			}
 			sb.Append("}\n");

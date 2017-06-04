@@ -15,7 +15,7 @@ namespace YingDev.UnsafeSerialization
 
 	public static class Readers
 	{
-        public unsafe static void _LayoutReader(UnsafeBuffer r, ObjectPtrHolder ptr, LayoutInfo layout)//, object owner)
+		public unsafe static void _LayoutReader(UnsafeBuffer r, ObjectPtrHolder ptr, LayoutInfo layout)//, object owner)
 		{
 			var fields = layout.Fields;
 			//LOGGER.WriteLine("_layoutReader: fields=" + string.Join(",", fields.Select(f => f.Name)));
@@ -26,16 +26,16 @@ namespace YingDev.UnsafeSerialization
 				//LOGGER.WriteLine("_LayoutReader: " + f.Name + " @" + f.Offset);
 				if (f.StructReader != null)
 				{
-                    ptr.offset += f.Offset;
-                    f.StructReader(r, ptr);
-                    ptr.offset -= f.Offset;
-                }
-                else
+					ptr.offset += f.Offset;
+					f.StructReader(r, ptr);
+					ptr.offset -= f.Offset;
+				}
+				else
 				{
-                    var result = f.ObjectReader(r, ptr.obj);
-                    LayoutInfo.SetObjectAtOffset(ptr.obj, (IntPtr)ptr.offset + f.Offset, result);    
-                }
-            }
+					var result = f.ObjectReader(r, ptr.obj);
+					LayoutInfo.SetObjectAtOffset(ptr.obj, (IntPtr)ptr.offset + f.Offset, result);
+				}
+			}
 		}
 
 		public static StructReader LayoutReader<T>()
@@ -49,8 +49,8 @@ namespace YingDev.UnsafeSerialization
 			return (r, p) =>
 			{
 				if (layout == null)
-					layout = LayoutInfo.Get(type);
-                _LayoutReader(r, p, layout);//, null);
+					layout = LayoutInfoRegistry.Get(type);
+				_LayoutReader(r, p, layout);//, null);
 			};
 		}
 
@@ -66,8 +66,8 @@ namespace YingDev.UnsafeSerialization
 			return (r, o) =>
 			{
 				if (layout == null)
-					layout = LayoutInfo.Get(type);
-				var msg = layout.NewObj(); 
+					layout = LayoutInfoRegistry.Get(type);
+				var msg = layout.NewObj();
 				//var msg = Activator.CreateInstance(type);
 				_LayoutReader(r, new ObjectPtrHolder { obj = msg }, layout);//, msg);
 				return msg;
@@ -76,13 +76,13 @@ namespace YingDev.UnsafeSerialization
 
 		public static object MessageReader(UnsafeBuffer r, Type type)
 		{
-			var layout = LayoutInfo.Get(type);
+			var layout = LayoutInfoRegistry.Get(type);
 
 			if (layout.SelfReader != null)
 				return layout.SelfReader(r, null);
 			var msg = layout.NewObj();
 			//var msg = Activator.CreateInstance(type);
-            _LayoutReader(r, new ObjectPtrHolder { obj = msg }, layout);//, msg);
+			_LayoutReader(r, new ObjectPtrHolder { obj = msg }, layout);//, msg);
 			return msg;
 		}
 
@@ -95,8 +95,12 @@ namespace YingDev.UnsafeSerialization
 				if (ptr.obj == null)
 					r.Read4BytesTo(ptr.offset); //*((int*) ptr.offset) = r.ReadInt32();
 				else
-					fixed (byte* p = ptr.fixer)
-						r.Read4BytesTo((byte*)ptr.target + (int)ptr.offset);
+				{
+					/*fixed (byte* p = ptr.fixer)
+						r.Read4BytesTo((byte*)ptr.target + (int)ptr.offset);*/
+					var p = ObjectPtrHolder.Pin(ptr.obj);
+					r.Read4BytesTo(p + (int)ptr.offset);
+				}
 				//r.Read4BytesTo((byte*)ptr.target + (int)ptr.offset /* + ObjectPtrHolder.OBJHEADER*/);  //*((int*) (ptr.target + (int)ptr.offset + ObjectPtrHolder.OBJHEADER)) = r.ReadInt32();
 			}
 		}
@@ -109,8 +113,8 @@ namespace YingDev.UnsafeSerialization
 				if (ptr.obj == null)
 					r.Read2BytesTo(ptr.offset); //*((int*) ptr.offset) = r.ReadInt32();
 				else
-					fixed (byte* p = ptr.fixer)
-						r.Read2BytesTo((byte*)ptr.target + (int)ptr.offset);
+					//fixed (byte* p = ptr.fixer)
+					r.Read2BytesTo((byte*)ObjectPtrHolder.Pin(ptr.obj) + (int)ptr.offset);
 			}
 		}
 
@@ -123,8 +127,8 @@ namespace YingDev.UnsafeSerialization
 				if (ptr.obj == null)
 					r.ReadByteTo(ptr.offset); //*((byte*) ptr.Ptr) = r.ReadByte();
 				else
-					fixed (byte* p = ptr.fixer)
-						r.ReadByteTo((byte*)ptr.target + (int)ptr.offset /*+ ObjectPtrHolder.OBJHEADER*/); //*((byte*) (ptr.target + (int)ptr.offset + ObjectPtrHolder.OBJHEADER)) = r.ReadByte();
+					//fixed (byte* p = ptr.fixer)
+					r.ReadByteTo((byte*)ObjectPtrHolder.Pin(ptr.obj) + (int)ptr.offset /*+ ObjectPtrHolder.OBJHEADER*/); //*((byte*) (ptr.target + (int)ptr.offset + ObjectPtrHolder.OBJHEADER)) = r.ReadByte();
 			}
 		}
 
@@ -137,8 +141,8 @@ namespace YingDev.UnsafeSerialization
 				if (ptr.obj == null)
 					r.Read8BytesTo(ptr.offset); //*((double*) ptr.Ptr) = r.ReadDouble();
 				else
-					fixed (byte* p = ptr.fixer)
-						r.Read8BytesTo((byte*)ptr.target + (int)ptr.offset /*+ ObjectPtrHolder.OBJHEADER*/); //*((double*) (ptr.target + (int)ptr.offset + ObjectPtrHolder.OBJHEADER)) = r.ReadDouble();
+					//fixed (byte* p = ptr.fixer)
+					r.Read8BytesTo((byte*)ObjectPtrHolder.Pin(ptr.obj) + (int)ptr.offset /*+ ObjectPtrHolder.OBJHEADER*/); //*((double*) (ptr.target + (int)ptr.offset + ObjectPtrHolder.OBJHEADER)) = r.ReadDouble();
 			}
 		}
 
@@ -185,12 +189,13 @@ namespace YingDev.UnsafeSerialization
 					var array = (T[])arrayFactory(r, o);
 					//var h = new StructAddrHelper<T>();
 					//var ptr = new ObjectPtrHolder { obj = null, offset = (&h.dum - sizeofT) };
-					var fixer = new ObjectPtrHolder { obj = array };
-					fixed(byte* p = fixer.fixer)
+					//var fixer = new ObjectPtrHolder { obj = array };
+					//fixed (byte* p = fixer.fixer)
+					ObjectPtrHolder.Pin(array);
 					for (var i = writeStartIndex; i < array.Length; i++)
 					{
 						var ptr = Marshal.UnsafeAddrOfPinnedArrayElement(array, i);
-						
+
 						itemReader(r, new ObjectPtrHolder { offset = (byte*)ptr });
 						//array[i] = h.temp;
 					}
@@ -210,17 +215,16 @@ namespace YingDev.UnsafeSerialization
 				{
 					//Console.Write("*");
 					var array = (T[])arrayFactory(r, o);
-					var ptr = new ObjectPtrHolder { obj = array };
-					fixed (byte* p = ptr.fixer)
+					if (array.Length > 0)
 					{
-						r.ReadBytesTo(p, array.Length * sizeofT);
+						//var ptr = new ObjectPtrHolder { obj = array };
+						//fixed (byte* _ = ptr.fixer)
+						{
+							ObjectPtrHolder.Pin(array);
+							var p = (byte*)Marshal.UnsafeAddrOfPinnedArrayElement(array, 0);
+							r.ReadBytesTo(p, array.Length * sizeofT);
+						}
 					}
-					//Console.Write("#");
-					/*for (var i = 0; i < array.Length; i++)
-                    {
-                        itemReader(r, ptr);
-                        array[i] = h.temp;
-                    }*/
 
 					return array;
 				}
@@ -240,10 +244,10 @@ namespace YingDev.UnsafeSerialization
 		}
 
 		public static ObjectReader CStringReader = _CStringReader;
-        public static object _CStringReader(UnsafeBuffer r, object ptr)
-        {
-            return r.ReadCString();
-        }
+		public static object _CStringReader(UnsafeBuffer r, object ptr)
+		{
+			return r.ReadCString();
+		}
 	}
 
 }

@@ -61,7 +61,7 @@ namespace Tests
                 str = "hello world",
                 value = 789,
                 isOk = true,
-                inner = new MyStruct { A = 222, inner = new Inner() { name = "holy shit" }, strr = "hello world" },
+                inner = new MyStruct { A = 222, inner = new Inner(1) { name = "holy shit" }, strr = "hello world" },
                 f64 = 123.0,
                 pts = new[] { new Point { x = 1990, y = 2 }, new Point { x = 3, y = 4 }, new Point { x = 5, y = 6 }, new Point { x = 5, y = 6 } },
                 pt2 = 630
@@ -159,7 +159,7 @@ namespace Tests
 
                 x.a = i;
                 x.f64 = 123.0;
-                x.inner = new MyStruct { A = 5, inner = new Inner() { name = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' }) }};
+                x.inner = new MyStruct { A = 5, inner = new Inner(1) { name = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' }) }};
                 x.str = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' });
                 x.haha = "";
                 x.alert = null;
@@ -203,7 +203,7 @@ namespace Tests
 
                 fa.SetValue(x, buf.ReadByte());
                 ff64.SetValue(x, buf.ReadByte());
-                finner.SetValue(x, new MyStruct { A = 5, inner = new Inner() { name = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' }) }});
+                finner.SetValue(x, new MyStruct { A = 5, inner = new Inner(2) { name = new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' }) }});
                 fstr.SetValue(x, new string(new char[] { 'h', 'l', 'l', 'o', 'w', 'o', 'l', 'd', 'x' }));
                 fnumMap.SetValue(x, new Dictionary<int, int> { { 112, 222 } });
                 fisOk.SetValue(x, Convert.ToBoolean(buf.ReadByte()));
@@ -299,6 +299,11 @@ public class Inner
     double _dum1;
     double _dum2;
 
+    public Inner(int a)
+    {
+
+    }
+
     public void Test()
     {
         Console.WriteLine("Inner.Test: " + name);
@@ -315,7 +320,7 @@ public class Inner
     }*/
 }
 
-[StructLayout(LayoutKind.Sequential)]
+[UnsafeSerialize, StructLayout(LayoutKind.Sequential)]
 public struct Point
 {
     public int x;
