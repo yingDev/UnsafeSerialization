@@ -48,10 +48,12 @@ namespace Tests
                 {typeof(double), new StructWriter(F64Writer)},
                 {typeof(string), new ObjectWriter(CStringWriter)},
             };
-            LayoutInfo.Add<Point>(defReaders, defWriters);
-            LayoutInfo.Add<Inner>(defReaders, defWriters);
-            LayoutInfo.Add<MyStruct>(defReaders, defWriters);
-            LayoutInfo.Add<X>(defReaders, defWriters);
+			LayoutInfoRegistry.DefaultReaderWriterProvider = new DictDefaultReaderWriterProvider(defReaders, defWriters);
+
+            LayoutInfoRegistry.Add(typeof(Point));
+            LayoutInfoRegistry.Add(typeof(Inner));
+			LayoutInfoRegistry.Add(typeof(MyStruct));
+			LayoutInfoRegistry.Add(typeof(X));
 
             var src = new X
             {
@@ -93,7 +95,7 @@ namespace Tests
                     DoGC();
                     var writerTime = RunWriter(fastBuf, src, N);
                     var result = (X)MessageReader(fastBuf, typeof(X));
-                    log.WriteLine(result.ToString());
+                    log.WriteLine(ToStringEx.ToStringUsingLayoutInfo(result.GetType(), result));
 
                     Console.WriteLine("RunReadDirect");
                     DoGC();
@@ -268,7 +270,7 @@ public class X : BaseX
     static StructReader pt2Reader = CondReader<X>(o => true, I32Reader);
     public int pt2;
 
-    public override string ToString() => this.ToStringUsingLayoutInfo();
+    //public override string ToString() => this.ToStringUsingLayoutInfo();
 
     /*~X()
     {
@@ -286,10 +288,10 @@ public struct MyStruct
     static ObjectWriter strrWriter = (r, o) => { };//skip
     static ObjectReader strrReader = (r, o) => "strrrrrrrr";
 
-    public override string ToString()
+    /*public override string ToString()
     {
         return this.ToStringUsingLayoutInfo();
-    }
+    }*/
 }
 
 [UnsafeSerialize, StructLayout(LayoutKind.Sequential)]
@@ -309,10 +311,10 @@ public class Inner
         Console.WriteLine("Inner.Test: " + name);
     }
 
-    public override string ToString()
+    /*public override string ToString()
     {
         return "Inner: " + name;
-    }
+    }*/
 
     /*~Inner()
     {
