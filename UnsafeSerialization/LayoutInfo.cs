@@ -66,7 +66,7 @@ namespace YingDev.UnsafeSerialization
 
             info = Add(type);
             if(info == null)
-                throw new Exception("LayoutInfo Is Not Added for type: " + type.AssemblyQualifiedName);
+                throw new Exception("LayoutInfo Is Not Added for type: " + type.FullName);
 
             return info;
         }
@@ -135,11 +135,13 @@ namespace YingDev.UnsafeSerialization
             if (_infos.TryGetValue(type.TypeHandle, out info))
                 return info;
 
+			if (type.IsEnum)
+				throw new ArgumentException("Enum Type not surpported");
 
-            /*if(!_validateLayoutAttr(type, false))
+			/*if(!_validateLayoutAttr(type, false))
                 throw new ArgumentException("Type layout is not Sequential/Explicit: " + type.FullName);*/
 
-            var privFields = Enumerable.Empty<FieldInfo>();
+			var privFields = Enumerable.Empty<FieldInfo>();
             var baseType = type;
             while (baseType != null && !baseType.IsValueType)
             {
@@ -181,7 +183,7 @@ namespace YingDev.UnsafeSerialization
 
                     var fld = new LayoutField(f.Name,
                         fieldOffset,
-                        f.FieldType,
+                        f.FieldType.IsEnum ? Enum.GetUnderlyingType(f.FieldType) : f.FieldType,
                         reader as StructReader,
                         reader as ObjectReader,
                         writer as StructWriter,
@@ -232,14 +234,17 @@ namespace YingDev.UnsafeSerialization
                         BindingFlags.FlattenHierarchy);
                     searchType = searchType.BaseType;
                 }
-                if (staticReaderField != null)
-                {
-                    fieldReader = (Delegate)staticReaderField.GetValue(null);
-                }
-                else if ( (fieldReader = DefaultReaderWriterProvider.GetReaderFor(f.FieldType)) != null)// defaultFieldReaders.TryGetValue(f.FieldType, out fieldReader))
-                {
-                }
-                else
+				if (staticReaderField != null)
+				{
+					fieldReader = (Delegate)staticReaderField.GetValue(null);
+				}
+				else if ((fieldReader = DefaultReaderWriterProvider.GetReaderFor(f.FieldType)) != null)// defaultFieldReaders.TryGetValue(f.FieldType, out fieldReader))
+				{
+				}
+				else if (f.FieldType.IsEnum && (fieldReader = DefaultReaderWriterProvider.GetReaderFor(Enum.GetUnderlyingType(f.FieldType))) != null)
+				{
+				}
+				else
                 {
                     if (f.FieldType.GetCustomAttribute<UnsafeSerializeAttribute>() != null)
                     {
@@ -289,7 +294,10 @@ namespace YingDev.UnsafeSerialization
                 else if ( (fieldWriter = DefaultReaderWriterProvider.GetWriterFor(f.FieldType)) != null)// defaultFieldWriters.TryGetValue(f.FieldType, out fieldWriter))
                 {
                 }
-                else
+				else if (f.FieldType.IsEnum && (fieldWriter = DefaultReaderWriterProvider.GetWriterFor(Enum.GetUnderlyingType(f.FieldType))) != null)
+				{
+				}
+				else
                 {
                     if(f.FieldType.GetCustomAttribute<UnsafeSerializeAttribute>() != null)
                     {
