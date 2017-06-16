@@ -9,7 +9,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>UnsafeSerialization</RootNamespace>
     <AssemblyName>UnsafeSerialization</AssemblyName>
-    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
   </PropertyGroup>
@@ -26,7 +26,7 @@
       <CustomCommands>
         <Command>
           <type>AfterBuild</type>
-          <command>mono ${ProjectDir}/../UnsafeSerializationPostProcessor/bin/${ProjectConfigName}/UnsafeSerializationPostProcessor.exe ${TargetPath} true</command>
+          <command>mono ${SolutionDir}/UnsafeSerialization/UnsafeSerializationPostProcessor/bin/${ProjectConfigName}/UnsafeSerializationPostProcessor.exe ${TargetPath} true</command>
         </Command>
       </CustomCommands>
     </CustomCommands>
@@ -40,6 +40,9 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Unity|AnyCPU'">
+    <OutputPath>bin\Unity\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />

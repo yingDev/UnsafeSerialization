@@ -10,7 +10,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnsafeSerialization", "Unsa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnsafeSerializationPostProcessor", "UnsafeSerializationPostProcessor\UnsafeSerializationPostProcessor.csproj", "{1FE7A0B1-5E4B-48F3-B07C-E77D98160021}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests2", "Tests2\Tests2-mac.csproj", "{7990F572-87EA-4C17-AA11-3629953095DA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests2", "Tests2\Tests2.csproj", "{7990F572-87EA-4C17-AA11-3629953095DA}"
 EndProject
 Global
 	GlobalSection(Performance) = preSolution
