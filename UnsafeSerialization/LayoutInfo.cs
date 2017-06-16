@@ -422,12 +422,12 @@ namespace YingDev.UnsafeSerialization
 			NewObj = newObj;
         }
 
-		public static void SetObjectAtOffset(object obj, IntPtr offset, object value)
+		public static unsafe void SetObjectAtOffset(object obj, byte* offset, object value)
 		{
 			throw new NotImplementedException(nameof(SetObjectAtOffset) + " is Supposed to be implemented in IL by the postprocessor");
 		}
 
-		public static object GetObjectAtOffset(object target, IntPtr offset)
+		public static unsafe object GetObjectAtOffset(object target, byte* offset)
 		{
 			throw new NotImplementedException(nameof(GetObjectAtOffset) + " is Supposed to be implemented in IL by the postprocessor");
 		}

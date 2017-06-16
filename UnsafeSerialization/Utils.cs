@@ -40,7 +40,7 @@ namespace YingDev.UnsafeSerialization.Utils
 
 		[FieldOffset(8)] public byte* offset;
 
-		public void* target
+		/*public void* target
 		{
 			get
 			{
@@ -49,9 +49,17 @@ namespace YingDev.UnsafeSerialization.Utils
 					return *(void**)((byte*)p - 8);
 				}
 			}
-		}
+		}*/
 
-		public void* Ptr => obj == null ? offset : ((byte*)target + (int)offset);
+		public void* Ptr
+		{
+			get
+			{
+				var target = Pin(obj);
+				return obj == null ? offset : ((byte*) target + (int) offset);
+			}
+
+		}
 
 		[MethodImpl(MethodImplOptions.NoInlining)]
 		public static unsafe byte* Pin(object o)

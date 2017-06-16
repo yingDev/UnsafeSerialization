@@ -28,7 +28,7 @@ namespace YingDev.UnsafeSerialization
 				}
 				else
 				{
-					var value = LayoutInfo.GetObjectAtOffset(ptr.obj, new IntPtr(ptr.offset + f.Offset));
+					var value = LayoutInfo.GetObjectAtOffset(ptr.obj, ptr.offset + f.Offset);
 					f.ObjectWriter(buf, value);
 				}
 			}
