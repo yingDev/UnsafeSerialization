@@ -33,9 +33,6 @@
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Unity|AnyCPU'">
-    <OutputPath>bin\Unity\</OutputPath>
-  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -61,6 +58,6 @@
 
 if "$(ConfigurationName)" == "Debug" (set writeSymbol=true)
 
-$(ProjectDir)\..\UnsafeSerializationPostProcessor\bin\$(ConfigurationName)\UnsafeSerializationPostProcessor.exe $(TargetPath) %25writeSymbol%25</PostBuildEvent>
+$(ProjectDir)\..\UnsafeSerializationPostProcessor\bin\$(ConfigurationName)\UnsafeSerializationPostProcessor.exe $(TargetPath) %2525writeSymbol%2525</PostBuildEvent>
   </PropertyGroup>
 </Project>
