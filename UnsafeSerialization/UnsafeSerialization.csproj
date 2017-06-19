@@ -58,6 +58,6 @@
 
 if "$(ConfigurationName)" == "Debug" (set writeSymbol=true)
 
-$(ProjectDir)\..\UnsafeSerializationPostProcessor\bin\$(ConfigurationName)\UnsafeSerializationPostProcessor.exe $(TargetPath) %2525writeSymbol%2525</PostBuildEvent>
+$(ProjectDir)\..\UnsafeSerializationPostProcessor\bin\$(ConfigurationName)\UnsafeSerializationPostProcessor.exe $(TargetPath) %25writeSymbol%25</PostBuildEvent>
   </PropertyGroup>
 </Project>
