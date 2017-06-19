@@ -19,6 +19,12 @@ namespace YingDev.UnsafeSerializationPostProcessor
 
 		static MethodReference ObjectPtrHolderPinRef;
 
+		struct Point { int x; int y; }
+		static object New()
+		{
+			return default(Point);
+		}
+
 		static void Main(string[] args)
 		{
 			var file = ValidateArgs(args);
@@ -52,8 +58,10 @@ namespace YingDev.UnsafeSerializationPostProcessor
 				foreach (var type in markedTypes)
 				{
 					WriteLine($"Processing: {type.FullName}");
-					AddGeneratedMethod(type);
+
 					Emit_NewObj_IL(type);
+					Emit_GetFieldOffsets_IL(type);
+
 					assemblyModified = true;
 				}
 
@@ -156,7 +164,7 @@ namespace YingDev.UnsafeSerializationPostProcessor
 			return modified;
 		}
 
-		static void AddGeneratedMethod(TypeDefinition type)
+		static void Emit_GetFieldOffsets_IL(TypeDefinition type)
 		{
 			var mod = type.Module;
 			var targetMethod = type.Methods.FirstOrDefault(m => m.Name == GENERATED_METHOD_NAME);
@@ -168,26 +176,13 @@ namespace YingDev.UnsafeSerializationPostProcessor
 			var dict_t = mod.ImportReference(mod.ImportReference(typeof(Dictionary<,>)).Resolve().MakeGenericInstanceType(string_t, ulong_t));
 
 			var method = new MethodDefinition(GENERATED_METHOD_NAME, MethodAttributes.Public | MethodAttributes.Static, dict_t);
-			method.Parameters.Add(new ParameterDefinition("inst", ParameterAttributes.None, mod.ImportReference(typeof(object))));
-
-			Emit_GetFieldOffsets_IL(type, method);
+			//method.Parameters.Add(new ParameterDefinition("inst", ParameterAttributes.None, mod.TypeSystem.Object));
 			type.Methods.Add(method);
 
-			//Emit_Add_SetObject_Method_IL(type);
-			//Emit_SetObjectAtOffset_IL(type);
-			//Emit_GetObjectAtOffset_IL(type);
-
-		}
-
-		static void Emit_GetFieldOffsets_IL(TypeDefinition type, MethodDefinition method)
-		{
-			var mod = type.Module;
 			var il = method.Body.GetILProcessor();
 			var body = method.Body;
 
-			var ulong_t = mod.ImportReference(typeof(ulong));
 			var int_t = mod.ImportReference(typeof(int));
-			var string_t = mod.ImportReference(typeof(string));
 
 			var dict_tdef = mod.ImportReference(typeof(Dictionary<,>)).Resolve();
 			var dictInst_t = (GenericInstanceType)mod.ImportReference(dict_tdef.MakeGenericInstanceType(string_t, ulong_t));
@@ -203,29 +198,32 @@ namespace YingDev.UnsafeSerializationPostProcessor
 			body.InitLocals = true;
 			body.Variables.Add(new VariableDefinition(dictInst_t));
 			body.Variables.Add(new VariableDefinition(ulong_t));
-			method.Body.Variables.Add(new VariableDefinition(new PinnedType(mod.ImportReference(typeof(object)))));
 
-			//il.EmitWriteLine(mod, "A");
+			//the Instance @ loc2
+			body.Variables.Add(new VariableDefinition(type));
+
+			//method.Body.Variables.Add(new VariableDefinition(new PinnedType(mod.ImportReference(typeof(object)))));
 
 			il.Append(GetLdcI4((sbyte)fields.Length));
 			il.Emit(OC.Newobj, dictCtor);
 			il.Emit(OC.Stloc_0);
 
-			//il.EmitWriteLine(mod, "B");
+			if (!type.IsValueType)
+			{
+				var ctor = type.GetConstructors().First(c => !c.HasParameters);
+				il.Emit(OC.Newobj, ctor);
+				il.Emit(OC.Stloc_2);
+			}
 
-			//pin
-			il.Emit(OC.Ldarg_0);
-			il.Emit(OC.Stloc_2);
-
-			//il.Emit(OC.Ldloc_2);
-			//il.Emit(OC.Conv_U8);
-			//il.Emit(OC.Stloc_1);
-
+			// store base addr of the Instance
 			il.Emit(OC.Ldloca, 1);
-			il.Emit(OC.Ldarg_0);
+			if (type.IsValueType)
+				il.Emit(OC.Ldloca, 2);
+			else
+				il.Emit(OC.Ldloc_2);
 			il.Emit(OC.Stind_Ref);
 
-			//il.EmitWriteLine(mod, "C");
+			il.EmitWriteLine(mod, "C");
 
 			for (var i = 0; i < fields.Length; i++)
 			{
@@ -234,8 +232,11 @@ namespace YingDev.UnsafeSerializationPostProcessor
 				il.Emit(OC.Ldloc_0);
 				il.Emit(OC.Ldstr, f.DeclaringType.Name + "::" + f.Name);
 
-				il.Emit(OC.Ldarg_0);
-				il.Emit(OC.Castclass, f.DeclaringType);
+				if (type.IsValueType)
+					il.Emit(OC.Ldloca, 2);
+				else
+					il.Emit(OC.Ldloc_2);
+				//il.Emit(OC.Castclass, f.DeclaringType);
 				il.Emit(OC.Ldflda, f);
 				il.Emit(OC.Conv_U8);
 
@@ -244,7 +245,6 @@ namespace YingDev.UnsafeSerializationPostProcessor
 
 				il.Emit(OC.Callvirt, dictSetter);
 			}
-			//il.EmitWriteLine(mod, "D");
 
 			il.Emit(OC.Ldloc_0);
 			il.Emit(OC.Ret);
@@ -400,8 +400,27 @@ namespace YingDev.UnsafeSerializationPostProcessor
 			}
 			else
 			{
+				method.Body.Variables.Add(new VariableDefinition(type));
+				method.Body.Variables.Add(new VariableDefinition(mod.TypeSystem.Object));
+
+				//IL_0000: nop
+				//IL_0001: ldloca.s 0
+				//IL_0003: initobj YingDev.UnsafeSerializationPostProcessor.Program / Point
+				//IL_0009: ldloc.0
+				//IL_000a: box YingDev.UnsafeSerializationPostProcessor.Program / Point
+				//IL_000f: stloc.1
+				//IL_0010: br.s IL_0012
+
+				//IL_0012: ldloc.1
+				//IL_0013: ret
+
+				il.Emit(OC.Ldloca, 0);
 				il.Emit(OC.Initobj, type);
+				il.Emit(OC.Ldloc_0);
 				il.Emit(OC.Box, type);
+				il.Emit(OC.Stloc_1);
+
+				il.Emit(OC.Ldloc_1);
 				il.Emit(OC.Ret);
 			}
 
