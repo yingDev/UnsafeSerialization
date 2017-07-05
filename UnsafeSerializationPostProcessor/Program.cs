@@ -223,7 +223,7 @@ namespace YingDev.UnsafeSerializationPostProcessor
 				il.Emit(OC.Ldloc_2);
 			il.Emit(OC.Stind_Ref);
 
-			il.EmitWriteLine(mod, "C");
+			//il.EmitWriteLine(mod, "C");
 
 			for (var i = 0; i < fields.Length; i++)
 			{
