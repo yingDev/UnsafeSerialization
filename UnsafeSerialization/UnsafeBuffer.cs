@@ -121,8 +121,10 @@ namespace YingDev.UnsafeSerialization
 
 		public void WriteByte(byte value)
         {
-            if (!evalWriteLength)
-                *(p + _wPos++) = value;
+			if (!evalWriteLength)
+				*(p + _wPos++) = value;
+			else
+				_wPos++;
         }
 
         StringBuilder _cstrSb = new StringBuilder(128);
