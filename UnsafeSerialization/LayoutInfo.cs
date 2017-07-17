@@ -263,10 +263,10 @@ namespace YingDev.UnsafeSerialization
 			else
 				fieldReader = (Delegate)readerAttr.ObjectReader ?? readerAttr.StructReader;
 
-			if (fieldReader == null)
+			/*if (fieldReader == null)
 				throw new Exception(
 					"No reader available for " + type.FullName + "::" + f.Name + " (" + f.FieldType.FullName +
-					")");
+					")");*/
 
 			return fieldReader;
 		}
