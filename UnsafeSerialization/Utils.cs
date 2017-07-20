@@ -103,6 +103,9 @@ namespace YingDev.UnsafeSerialization.Utils
 	{
 		public static string ToStringUsingLayoutInfo(Type t, object obj)
 		{
+			if (obj == null)
+				return "null";
+
 			if (t.GetCustomAttribute(typeof(UnsafeSerializeAttribute)) == null)
 				return obj.ToString();
 
