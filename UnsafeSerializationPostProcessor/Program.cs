@@ -19,10 +19,15 @@ namespace YingDev.UnsafeSerializationPostProcessor
 
 		static MethodReference ObjectPtrHolderPinRef;
 
-		struct Point { int x; int y; }
-		static object New()
+		static void test()
 		{
-			return default(Point);
+			unsafe
+			{
+				int a = 0;
+				int* ptr = &a;
+				byte* ptr2 = (byte*)ptr + 8;
+
+			}
 		}
 
 		static void Main(string[] args)
@@ -311,14 +316,10 @@ namespace YingDev.UnsafeSerializationPostProcessor
 			//addr
 			il.Emit(OC.Ldarg_0);
 			il.Emit(OC.Conv_I);
-
-
-			//label: target != null
 			il.Emit(OC.Ldarg_1);
 			il.Emit(OC.Conv_I);
 			il.Emit(OC.Add);
 			il.Emit(OC.Conv_I);
-			//il.EmitWriteLine(mod, "B");
 
 			//value
 			il.Emit(OC.Ldarg_2);
@@ -353,6 +354,7 @@ namespace YingDev.UnsafeSerializationPostProcessor
 
 			method.Body.Variables.Add(new VariableDefinition(mod.ImportReference(typeof(object))));
 			method.Body.Variables.Add(new VariableDefinition(new PinnedType(mod.ImportReference(typeof(object)))));
+			//method.Body.Variables.Add(new VariableDefinition(new PointerType(mod.TypeSystem.Void)));
 
 			var il = method.Body.GetILProcessor();
 
@@ -360,23 +362,21 @@ namespace YingDev.UnsafeSerializationPostProcessor
 			il.Emit(OC.Ldarg_0);
 			il.Emit(OC.Stloc_1);
 
-			//ret value
+			//addr
 			il.Emit(OC.Ldloca, 0);
 
+			//value
 			il.Emit(OC.Ldarg_0);//+
 			il.Emit(OC.Conv_I);
 			il.Emit(OC.Ldarg_1);
 			il.Emit(OC.Add);
-
-			il.Emit(OC.Ldind_I); //get the ref
+			il.Emit(OC.Ldind_I8); //get the ref
+			il.Emit(OC.Conv_I);
 
 			il.Emit(OC.Stind_Ref);
+
 			il.Emit(OC.Ldloc_0);
 			il.Emit(OC.Ret);
-
-			//type.Methods.Add(method);
-
-
 		}
 
 		static void Emit_NewObj_IL(TypeDefinition type)
